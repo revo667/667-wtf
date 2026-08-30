@@ -80,7 +80,6 @@
 
 :root {
   --radius: 0.625rem;
-  --cursor-custom: url("./assets/cursor.png") 4 4, auto;
   --background: oklch(0 0 0);
   --foreground: oklch(0.94 0.01 300);
   --card: oklch(0.06 0.03 302);
@@ -235,7 +234,7 @@
   *,
   *::before,
   *::after {
-    cursor: var(--cursor-custom);
+    cursor: url("./assets/cursor.png") 4 4, auto;
     border-color: var(--color-border);
   }
 
