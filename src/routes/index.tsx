@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Users } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { RainEffect } from "@/components/RainEffect";
 import { MusicToggle } from "@/components/MusicToggle";
 import { getDiscordMemberCount } from "@/lib/discord.functions";
@@ -28,107 +28,41 @@ export const Route = createFileRoute("/")({
   component: Index,
 });
 
-const CARD_PARAMS =
-  "theme=custom&colorB1=000000&colorB2=000000&colorB3=000000&colorT1=471675&colorT2=FFFFFF&width=315&font=vampyre&nameColor1=471675";
-
-const PROFILES = [
+const DISCORD_CARDS = [
   {
-    id: "275774468658298883",
     name: "revo667",
-    params: CARD_PARAMS,
+    url: "https://www.revo667.com/api/discord-card",
+    profile: "https://discord.com/users/275774468658298883",
   },
   {
-    id: "865277133186400317",
     name: "furkwan667",
-    params: CARD_PARAMS,
+    url: "https://dsc-readme.tsuni.dev/api/user/865277133186400317?theme=custom&colorB1=000000&colorB2=000000&colorB3=000000&colorT1=471675&colorT2=FFFFFF&width=315&font=vampyre&nameColor1=471675",
+    profile: "https://discord.com/users/865277133186400317",
   },
   {
-    id: "697131524016832533",
     name: "esah667",
-    params: CARD_PARAMS,
+    url: "https://dsc-readme.tsuni.dev/api/user/697131524016832533?theme=custom&colorB1=000000&colorB2=000000&colorB3=000000&colorT1=471675&colorT2=FFFFFF&width=315&font=vampyre&nameColor1=471675",
+    profile: "https://discord.com/users/697131524016832533",
   },
 ];
 
-const CARD_REFRESH_MS = 60_000;
-
-function ProfileCard({
-  profile,
-  bucket,
-  onUnavailable,
-}: {
-  profile: (typeof PROFILES)[number];
-  bucket: number;
-  onUnavailable: (id: string) => void;
-}) {
-  const url = `https://dsc-readme.tsuni.dev/api/user/${profile.id}?${profile.params}&cb=${bucket}`;
-  const [src, setSrc] = useState<string | null>(null);
-  const loadedOnce = useRef(false);
-
-  useEffect(() => {
-    let cancelled = false;
-    const preload = new Image();
-    preload.onload = () => {
-      if (cancelled) return;
-      loadedOnce.current = true;
-      setSrc(url);
-    };
-    preload.onerror = () => {
-      if (!cancelled && !loadedOnce.current) onUnavailable(profile.id);
-    };
-    preload.src = url;
-    return () => {
-      cancelled = true;
-    };
-  }, [url, profile.id, onUnavailable]);
-
-  if (!src) return null;
-
-  return (
-    <a
-      href={`https://discord.com/users/${profile.id}`}
-      target="_blank"
-      rel="noopener noreferrer"
-      className="block overflow-hidden rounded-lg opacity-80 transition-all duration-300 hover:opacity-100 hover:scale-[1.04]"
-    >
-      <img
-        src={src}
-        alt={`${profile.name} Discord profili`}
-        className="block h-auto w-[215px] sm:w-[245px]"
-      />
-    </a>
-  );
-}
-
 function ProfileCards() {
-  const [bucket, setBucket] = useState<number | null>(null);
-  const [unavailable, setUnavailable] = useState<string[]>([]);
-
-  useEffect(() => {
-    const tick = () => setBucket(Math.floor(Date.now() / CARD_REFRESH_MS));
-    tick();
-    const interval = setInterval(tick, CARD_REFRESH_MS);
-    return () => clearInterval(interval);
-  }, []);
-
-  const markUnavailable = useCallback((id: string) => {
-    setUnavailable((prev) => (prev.includes(id) ? prev : [...prev, id]));
-  }, []);
-
-  if (bucket === null) return null;
-
-  const visible = PROFILES.filter((profile) => !unavailable.includes(profile.id));
-
-  if (!visible.length) return null;
-
   return (
     <div className="mt-6 flex max-w-3xl flex-wrap items-center justify-center gap-3">
-      {visible.map((profile) => (
-        <ProfileCard
-          key={profile.id}
-          profile={profile}
-          bucket={bucket}
-          onUnavailable={markUnavailable}
-        />
+      {DISCORD_CARDS.map((card) => (
+        <a
+          key={card.name}
+          href={card.profile}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="block overflow-hidden rounded-lg opacity-80 transition-all duration-300 hover:opacity-100 hover:scale-[1.04]"
+        >
+          <img
+            src={card.url}
+            alt={`${card.name} Discord profili`}
+            className="block h-auto w-[215px] sm:w-[245px]"
+          />
+        </a>
       ))}
     </div>
   );
