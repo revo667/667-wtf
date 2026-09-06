@@ -28,7 +28,7 @@ export function RainEffect() {
         x: Math.random() * width,
         y: Math.random() * height,
         len: 10 + Math.random() * 22,
-        speed: 1.9 + Math.random() * 3.6,
+        speed: 2.3 + Math.random() * 3.6,
         opacity: 0.12 + Math.random() * 0.45,
       }));
     };
