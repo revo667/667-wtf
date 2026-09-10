@@ -6,6 +6,8 @@ import { api } from "@/panel/api";
 import { useDebounced, useMeta } from "@/panel/hooks";
 import { useLive } from "@/panel/live";
 import { MessageItem } from "@/panel/MessageItem";
+import { Composer, DeleteMessageButton, PurgeTool } from "@/panel/MessageTools";
+import { useSession } from "@/panel/session";
 import type { MessagePage } from "@/panel/types";
 import { Card, Notice, Segmented, selectClass } from "@/panel/ui";
 
@@ -30,6 +32,7 @@ type Only = "" | "deleted" | "edited";
 
 function MessagesPage() {
   const search = Route.useSearch();
+  const isAdmin = useSession().level !== "mod";
   const navigate = useNavigate({ from: Route.fullPath });
   const [text, setText] = useState("");
   const q = useDebounced(text.trim(), 300);
@@ -78,6 +81,12 @@ function MessagesPage() {
 
   return (
     <div className="space-y-4">
+      {isAdmin && (
+        <div className="grid gap-4">
+          <Composer />
+          <PurgeTool />
+        </div>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <label className="flex h-9 min-w-56 flex-1 items-center gap-2 rounded-lg border border-border bg-background/60 px-3 focus-within:border-accent">
           <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
@@ -152,7 +161,12 @@ function MessagesPage() {
         ) : (
           <div className={`transition-opacity ${msgs.isPlaceholderData ? "opacity-60" : ""}`}>
             {items.map((m) => (
-              <MessageItem key={m.id} m={m} />
+              <div key={m.id} className="relative">
+                <MessageItem m={m} />
+                <div className="absolute top-2 right-0">
+                  <DeleteMessageButton m={m} />
+                </div>
+              </div>
             ))}
             {msgs.hasNextPage && (
               <div className="pt-4 text-center">

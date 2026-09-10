@@ -25,6 +25,7 @@ type NavTo =
   | "/panel/mesajlar"
   | "/panel/roller"
   | "/panel/kanallar"
+  | "/panel/sunucu"
   | "/panel/moderasyon";
 // `to` olmayanlar henüz yapılmamış modüller: menüde görünür ama tıklanamaz.
 type NavItem = { label: string; icon: LucideIcon; to?: NavTo };
@@ -35,7 +36,7 @@ const NAV: NavItem[] = [
   { label: "Mesajlar", icon: MessagesSquare, to: "/panel/mesajlar" },
   { label: "Roller", icon: Shield, to: "/panel/roller" },
   { label: "Kanallar", icon: Hash, to: "/panel/kanallar" },
-  { label: "Sunucu", icon: Server },
+  { label: "Sunucu", icon: Server, to: "/panel/sunucu" },
   { label: "Otomasyon", icon: Workflow },
   { label: "Koruma", icon: ShieldCheck },
   { label: "Moderasyon", icon: Gavel, to: "/panel/moderasyon" },
