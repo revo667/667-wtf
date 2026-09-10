@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PanelRouteImport } from './routes/panel'
 import { Route as PanelIndexRouteImport } from './routes/panel/index'
 import { Route as PanelKanallarRouteImport } from './routes/panel/kanallar'
+import { Route as PanelKorumaRouteImport } from './routes/panel/koruma'
 import { Route as PanelMesajlarRouteImport } from './routes/panel/mesajlar'
 import { Route as PanelModerasyonRouteImport } from './routes/panel/moderasyon'
 import { Route as PanelOtomasyonRouteImport } from './routes/panel/otomasyon'
@@ -38,6 +39,11 @@ const PanelIndexRoute = PanelIndexRouteImport.update({
 const PanelKanallarRoute = PanelKanallarRouteImport.update({
   id: '/kanallar',
   path: '/kanallar',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelKorumaRoute = PanelKorumaRouteImport.update({
+  id: '/koruma',
+  path: '/koruma',
   getParentRoute: () => PanelRoute,
 } as any)
 const PanelMesajlarRoute = PanelMesajlarRouteImport.update({
@@ -75,6 +81,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/panel': typeof PanelRouteWithChildren
   '/panel/kanallar': typeof PanelKanallarRoute
+  '/panel/koruma': typeof PanelKorumaRoute
   '/panel/mesajlar': typeof PanelMesajlarRoute
   '/panel/moderasyon': typeof PanelModerasyonRoute
   '/panel/otomasyon': typeof PanelOtomasyonRoute
@@ -86,6 +93,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/panel/kanallar': typeof PanelKanallarRoute
+  '/panel/koruma': typeof PanelKorumaRoute
   '/panel/mesajlar': typeof PanelMesajlarRoute
   '/panel/moderasyon': typeof PanelModerasyonRoute
   '/panel/otomasyon': typeof PanelOtomasyonRoute
@@ -99,6 +107,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/panel': typeof PanelRouteWithChildren
   '/panel/kanallar': typeof PanelKanallarRoute
+  '/panel/koruma': typeof PanelKorumaRoute
   '/panel/mesajlar': typeof PanelMesajlarRoute
   '/panel/moderasyon': typeof PanelModerasyonRoute
   '/panel/otomasyon': typeof PanelOtomasyonRoute
@@ -113,6 +122,7 @@ export interface FileRouteTypes {
     | '/'
     | '/panel'
     | '/panel/kanallar'
+    | '/panel/koruma'
     | '/panel/mesajlar'
     | '/panel/moderasyon'
     | '/panel/otomasyon'
@@ -124,6 +134,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/panel/kanallar'
+    | '/panel/koruma'
     | '/panel/mesajlar'
     | '/panel/moderasyon'
     | '/panel/otomasyon'
@@ -136,6 +147,7 @@ export interface FileRouteTypes {
     | '/'
     | '/panel'
     | '/panel/kanallar'
+    | '/panel/koruma'
     | '/panel/mesajlar'
     | '/panel/moderasyon'
     | '/panel/otomasyon'
@@ -178,6 +190,13 @@ declare module '@tanstack/react-router' {
       path: '/kanallar'
       fullPath: '/panel/kanallar'
       preLoaderRoute: typeof PanelKanallarRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/koruma': {
+      id: '/panel/koruma'
+      path: '/koruma'
+      fullPath: '/panel/koruma'
+      preLoaderRoute: typeof PanelKorumaRouteImport
       parentRoute: typeof PanelRoute
     }
     '/panel/mesajlar': {
@@ -227,6 +246,7 @@ declare module '@tanstack/react-router' {
 
 interface PanelRouteChildren {
   PanelKanallarRoute: typeof PanelKanallarRoute
+  PanelKorumaRoute: typeof PanelKorumaRoute
   PanelMesajlarRoute: typeof PanelMesajlarRoute
   PanelModerasyonRoute: typeof PanelModerasyonRoute
   PanelOtomasyonRoute: typeof PanelOtomasyonRoute
@@ -238,6 +258,7 @@ interface PanelRouteChildren {
 
 const PanelRouteChildren: PanelRouteChildren = {
   PanelKanallarRoute: PanelKanallarRoute,
+  PanelKorumaRoute: PanelKorumaRoute,
   PanelMesajlarRoute: PanelMesajlarRoute,
   PanelModerasyonRoute: PanelModerasyonRoute,
   PanelOtomasyonRoute: PanelOtomasyonRoute,

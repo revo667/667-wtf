@@ -12,7 +12,7 @@ import {
 import { useMeta } from "@/panel/hooks";
 import { useSession } from "@/panel/session";
 import type { ChannelMeta, RoleMeta } from "@/panel/types";
-import { Card, Notice, selectClass } from "@/panel/ui";
+import { Card, Notice, Toggle, selectClass } from "@/panel/ui";
 
 export const Route = createFileRoute("/panel/otomasyon")({
   component: AutomationPage,
@@ -31,6 +31,7 @@ interface Logs {
   messages: string | null;
   moderation: string | null;
   voice: string | null;
+  protection: string | null;
 }
 
 interface Automation {
@@ -47,6 +48,7 @@ const LOGS: { key: keyof Logs; label: string; hint: string }[] = [
   { key: "messages", label: "Mesaj logu", hint: "silinen ve düzenlenen mesajlar" },
   { key: "moderation", label: "Moderasyon logu", hint: "panelden verilen cezalar" },
   { key: "voice", label: "Ses logu", hint: "sese giriş, çıkış, kanal değişimi" },
+  { key: "protection", label: "Koruma logu", hint: "koruma modüllerinin müdahaleleri" },
 ];
 
 /** Boş seçimleri null yapar; kaydedilen ile formdaki karşılaştırılabilsin. */
@@ -61,6 +63,7 @@ function clean(a: Automation): Automation {
       messages: ch(a.logs.messages),
       moderation: ch(a.logs.moderation),
       voice: ch(a.logs.voice),
+      protection: ch(a.logs.protection),
     },
   };
 }
@@ -176,28 +179,6 @@ function AutomationForm({ saved }: { saved: Automation }) {
         <ActionResult msg={save.msg ?? test.msg} />
       </div>
     </div>
-  );
-}
-
-function Toggle({
-  checked,
-  onChange,
-  label,
-}: {
-  checked: boolean;
-  onChange: (v: boolean) => void;
-  label: string;
-}) {
-  return (
-    <label className="inline-flex cursor-pointer items-center gap-2 text-sm">
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="h-4 w-4 accent-accent"
-      />
-      <span>{label}</span>
-    </label>
   );
 }
 

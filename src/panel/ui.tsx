@@ -207,6 +207,33 @@ export function Badge({
   );
 }
 
+export function Toggle({
+  checked,
+  onChange,
+  label,
+  disabled = false,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  disabled?: boolean;
+}) {
+  return (
+    <label
+      className={`inline-flex items-center gap-2 text-sm ${disabled ? "opacity-60" : "cursor-pointer"}`}
+    >
+      <input
+        type="checkbox"
+        checked={checked}
+        disabled={disabled}
+        onChange={(e) => onChange(e.target.checked)}
+        className="h-4 w-4 accent-accent"
+      />
+      <span>{label}</span>
+    </label>
+  );
+}
+
 /** Sorgu hatası / boş durum. 503 = bot henüz bağlanmadı. */
 export function Notice({ error, empty }: { error?: unknown; empty?: string }) {
   if (error) {

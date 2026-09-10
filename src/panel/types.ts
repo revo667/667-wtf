@@ -170,4 +170,5 @@ export type LiveEvent =
       at: number;
     }
   | { type: "member_leave"; id: string; name: string; at: number }
-  | { type: "voice"; user_id: string; channel_id: string | null; at: number };
+  | { type: "voice"; user_id: string; channel_id: string | null; at: number }
+  | { type: "protection"; module: string; severity: string; summary: string; at: number };
