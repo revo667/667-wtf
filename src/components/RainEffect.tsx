@@ -8,7 +8,11 @@ type Drop = {
   opacity: number;
 };
 
-export function RainEffect() {
+/**
+ * Mor yağmur. `dim` panelde içeriğin önüne geçmesin diye yağmuru kısar.
+ * "Hareketi azalt" açıksa ya da sekme gizliyse animasyon durur (tek kare çizili kalır).
+ */
+export function RainEffect({ dim = false }: { dim?: boolean }) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -17,6 +21,7 @@ export function RainEffect() {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
     let width = 0;
     let height = 0;
     let drops: Drop[] = [];
@@ -33,22 +38,7 @@ export function RainEffect() {
       }));
     };
 
-    const resize = () => {
-      const dpr = Math.min(window.devicePixelRatio || 1, 2);
-      width = window.innerWidth;
-      height = window.innerHeight;
-      canvas.width = width * dpr;
-      canvas.height = height * dpr;
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      makeDrops();
-    };
-
-    resize();
-    window.addEventListener("resize", resize);
-
-    const draw = () => {
+    const paint = (advance: boolean) => {
       ctx.clearRect(0, 0, width, height);
       ctx.lineCap = "round";
       for (const d of drops) {
@@ -59,6 +49,7 @@ export function RainEffect() {
         ctx.lineTo(d.x - 1.2, d.y + d.len);
         ctx.stroke();
 
+        if (!advance) continue;
         d.y += d.speed;
         d.x -= 0.15;
         if (d.y > height) {
@@ -66,21 +57,54 @@ export function RainEffect() {
           d.x = Math.random() * width;
         }
       }
+    };
+
+    const draw = () => {
+      paint(true);
       frame = requestAnimationFrame(draw);
     };
-    frame = requestAnimationFrame(draw);
+
+    const start = () => {
+      cancelAnimationFrame(frame);
+      if (!reducedMotion.matches && !document.hidden) frame = requestAnimationFrame(draw);
+    };
+
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      width = window.innerWidth;
+      height = window.innerHeight;
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      makeDrops();
+      paint(false);
+    };
+
+    resize();
+    start();
+    window.addEventListener("resize", resize);
+    document.addEventListener("visibilitychange", start);
+    reducedMotion.addEventListener("change", start);
 
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", resize);
+      document.removeEventListener("visibilitychange", start);
+      reducedMotion.removeEventListener("change", start);
     };
   }, []);
 
   return (
-    <canvas
-      ref={canvasRef}
+    <div
       aria-hidden="true"
-      className="pointer-events-none fixed inset-0 z-0 animate-rain-fade-in"
-    />
+      className={`pointer-events-none transition-opacity duration-700 ${dim ? "opacity-40" : "opacity-100"}`}
+    >
+      <canvas
+        ref={canvasRef}
+        className="pointer-events-none fixed inset-0 z-0 animate-rain-fade-in"
+      />
+    </div>
   );
 }

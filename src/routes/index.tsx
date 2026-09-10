@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { Users } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Clock } from "@/components/Clock";
 import { RainEffect } from "@/components/RainEffect";
 import { MusicToggle } from "@/components/MusicToggle";
 import { getDiscordMemberCount } from "@/lib/discord.functions";
@@ -33,11 +33,6 @@ const DISCORD_CARDS = [
     name: "revo667",
     url: "https://www.revo667.com/api/discord-card",
     profile: "https://discord.com/users/275774468658298883",
-  },
-  {
-    name: "furkwan667",
-    url: "https://dsc-readme.tsuni.dev/api/user/865277133186400317?theme=custom&colorB1=000000&colorB2=000000&colorB3=000000&colorT1=471675&colorT2=FFFFFF&width=315&font=vampyre&nameColor1=471675",
-    profile: "https://discord.com/users/865277133186400317",
   },
   {
     name: "esah667",
@@ -96,40 +91,6 @@ function MemberCount() {
   );
 }
 
-function Clock() {
-  const [now, setNow] = useState<Date | null>(null);
-
-  useEffect(() => {
-    setNow(new Date());
-    const interval = setInterval(() => setNow(new Date()), 50);
-    return () => clearInterval(interval);
-  }, []);
-
-  const formatDate = (date: Date) => {
-    const d = String(date.getDate()).padStart(2, "0");
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const y = date.getFullYear();
-    return `${d}.${m}.${y}`;
-  };
-
-  const formatTime = (date: Date) => {
-    const h = date.getHours();
-    const m = String(date.getMinutes()).padStart(2, "0");
-    const s = String(date.getSeconds()).padStart(2, "0");
-    const ms = String(date.getMilliseconds()).padStart(3, "0");
-    return `${h}.${m}.${s}.${ms}`;
-  };
-
-  return (
-    <div className="pointer-events-none fixed top-6 left-6 z-20 flex flex-col gap-0.5 font-mono text-xs tracking-widest text-muted-foreground/80 animate-fade-in-up">
-      <span className="uppercase tracking-[0.2em]">{now ? formatDate(now) : "00.00.0000"}</span>
-      <span className="text-[10px] tabular-nums tracking-wider">
-        {now ? formatTime(now) : "0.00.00.000"}
-      </span>
-    </div>
-  );
-}
-
 function Index() {
   return (
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-background px-6">
@@ -145,6 +106,8 @@ function Index() {
           href="https://discord.gg/667"
           target="_blank"
           rel="noopener noreferrer"
+          // Sayfa dili tr; bu olmadan uppercase "i"yi "İ" yapar.
+          lang="en"
           className="story-link mt-3 text-xs tracking-[0.5em] text-muted-foreground uppercase transition-colors duration-300 hover:text-primary sm:text-sm"
         >
           discord.gg/667
