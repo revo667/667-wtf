@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
+  Archive,
   Gavel,
   Hash,
   KeyRound,
@@ -28,6 +29,7 @@ type NavTo =
   | "/panel/sunucu"
   | "/panel/otomasyon"
   | "/panel/koruma"
+  | "/panel/yedekler"
   | "/panel/moderasyon";
 // `to` olmayanlar henüz yapılmamış modüller: menüde görünür ama tıklanamaz.
 type NavItem = { label: string; icon: LucideIcon; to?: NavTo };
@@ -41,6 +43,7 @@ const NAV: NavItem[] = [
   { label: "Sunucu", icon: Server, to: "/panel/sunucu" },
   { label: "Otomasyon", icon: Workflow, to: "/panel/otomasyon" },
   { label: "Koruma", icon: ShieldCheck, to: "/panel/koruma" },
+  { label: "Yedekler", icon: Archive, to: "/panel/yedekler" },
   { label: "Moderasyon", icon: Gavel, to: "/panel/moderasyon" },
   { label: "Panel", icon: KeyRound },
 ];
