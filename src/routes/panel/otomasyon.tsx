@@ -83,13 +83,150 @@ function AutomationPage() {
 }
 
 function AutomationAdmin() {
+  const session = useSession();
   const q = useQuery({
     queryKey: ["panel", "automation"],
     queryFn: () => api<Automation>("GET", "/automation"),
   });
-  if (q.error) return <Notice error={q.error} />;
-  if (!q.data) return <p className="py-8 text-center text-sm text-muted-foreground">Yükleniyor…</p>;
-  return <AutomationForm saved={q.data} />;
+  return (
+    <div className="space-y-4">
+      <StaffLogCard owner={session.level === "owner"} />
+      {q.error ? (
+        <Notice error={q.error} />
+      ) : !q.data ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">Yükleniyor…</p>
+      ) : (
+        <AutomationForm saved={q.data} />
+      )}
+    </div>
+  );
+}
+
+interface StaffLog {
+  channel_id: string | null;
+  telegram: boolean;
+  telegram_chat: string | null;
+}
+
+function StaffLogCard({ owner }: { owner: boolean }) {
+  const q = useQuery({
+    queryKey: ["panel", "staff-log"],
+    queryFn: () => api<StaffLog>("GET", "/staff-log"),
+  });
+  if (q.error) {
+    return (
+      <Card title="Yetkili logu">
+        <Notice error={q.error} />
+      </Card>
+    );
+  }
+  if (!q.data) return null;
+  return <StaffLogForm saved={q.data} owner={owner} />;
+}
+
+function StaffLogForm({ saved, owner }: { saved: StaffLog; owner: boolean }) {
+  const meta = useMeta();
+  const [channel, setChannel] = useState(saved.channel_id ?? "");
+  const [telegram, setTelegram] = useState(saved.telegram);
+  const [chat, setChat] = useState(saved.telegram_chat ?? "");
+  const id = channel.trim();
+  const found = meta.data?.channels.find((c) => c.id === id);
+  const dirty =
+    id !== (saved.channel_id ?? "") ||
+    telegram !== saved.telegram ||
+    chat.trim() !== (saved.telegram_chat ?? "");
+
+  const save = usePanelAction(
+    () =>
+      api("PUT", "/staff-log", {
+        channel_id: id || null,
+        telegram,
+        telegram_chat: chat.trim() || null,
+      }),
+    { success: "Yetkili logu kaydedildi" },
+  );
+  const test = usePanelAction(() => api("POST", "/staff-log/test"), {
+    success: "Test kaydı gönderildi",
+  });
+
+  const channelNote = !id
+    ? "Kapalı: Discord'a yazılmaz"
+    : !found
+      ? "Sunucuda bu ID'de kanal yok"
+      : found.kind === "text" || found.kind === "announcement"
+        ? `#${found.name}`
+        : "Bu bir yazı kanalı değil";
+
+  return (
+    <Card title="Yetkili logu">
+      <div className="space-y-4">
+        <p className="text-xs text-muted-foreground">
+          Her yetkilinin panelden yaptığı her değişiklik (kim, ne yaptı, kime/neye, sebep) ve
+          Discord'dan panel dışında yapılan yönetim işlemleri buraya yazılır. Bu ayarı sadece owner
+          değiştirebilir; ayar değişikliği eski hedefe de bildirilir.
+        </p>
+        <div className="grid gap-4 md:grid-cols-2">
+          <label className="block space-y-1.5 text-sm">
+            <span className="block text-muted-foreground">Discord kanal ID'si</span>
+            <input
+              value={channel}
+              disabled={!owner}
+              onChange={(e) => setChannel(e.target.value)}
+              inputMode="numeric"
+              placeholder="ör. 1547640868536590368"
+              className={`${inputClass} font-mono`}
+            />
+            <span className="block text-xs text-muted-foreground">{channelNote}</span>
+          </label>
+          <div className="space-y-1.5 text-sm">
+            <Toggle
+              checked={telegram}
+              disabled={!owner}
+              onChange={setTelegram}
+              label="Telegram'a da gönder"
+            />
+            {telegram && (
+              <input
+                value={chat}
+                disabled={!owner}
+                onChange={(e) => setChat(e.target.value)}
+                inputMode="numeric"
+                placeholder="sohbet ID'si (boş: owner'ların Telegram'ı)"
+                aria-label="Telegram sohbet ID'si"
+                className={`${inputClass} font-mono`}
+              />
+            )}
+            <span className="block text-xs text-muted-foreground">
+              Bir gruba göndermek için Telegram botunu gruba ekle ve grubun ID'sini (ör. -100…) gir.
+            </span>
+          </div>
+        </div>
+        {owner ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              disabled={!dirty || save.busy}
+              onClick={() => save.run(undefined)}
+              className={primaryButtonClass}
+            >
+              Kaydet
+            </button>
+            <button
+              type="button"
+              disabled={dirty || (!saved.channel_id && !saved.telegram) || test.busy}
+              onClick={() => test.run(undefined)}
+              className={buttonClass}
+            >
+              Test gönder
+            </button>
+            <ActionResult msg={save.msg ?? test.msg} />
+          </div>
+        ) : (
+          <p className="text-xs text-muted-foreground">Bu ayarı sadece owner değiştirebilir.</p>
+        )}
+      </div>
+    </Card>
+  );
 }
 
 function AutomationForm({ saved }: { saved: Automation }) {
