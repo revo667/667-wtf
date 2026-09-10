@@ -6,6 +6,7 @@ import { api } from "./api";
 import { DailyColumns } from "./charts";
 import { ago, date, hours, num, roleHex } from "./format";
 import { useMeta } from "./hooks";
+import { MemberActions } from "./MemberActions";
 import { MessageItem } from "./MessageItem";
 import type { MemberDetail as Detail } from "./types";
 import { Avatar, Badge, Card, Notice, StatTile, StatusDot } from "./ui";
@@ -97,6 +98,8 @@ function MemberDetailBody({ id }: { id: string }) {
           </div>
         </div>
       </header>
+
+      {m && !m.bot && <MemberActions member={m} voiceChannelId={d.profile.voice?.id ?? null} />}
 
       <div className="grid grid-cols-2 gap-3">
         <StatTile

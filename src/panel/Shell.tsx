@@ -19,7 +19,13 @@ import { api, setBind, type Session } from "./api";
 import { LiveProvider, useLive } from "./live";
 import { SessionContext } from "./session";
 
-type NavTo = "/panel" | "/panel/uyeler" | "/panel/mesajlar";
+type NavTo =
+  | "/panel"
+  | "/panel/uyeler"
+  | "/panel/mesajlar"
+  | "/panel/roller"
+  | "/panel/kanallar"
+  | "/panel/moderasyon";
 // `to` olmayanlar henüz yapılmamış modüller: menüde görünür ama tıklanamaz.
 type NavItem = { label: string; icon: LucideIcon; to?: NavTo };
 
@@ -27,12 +33,12 @@ const NAV: NavItem[] = [
   { label: "Genel Bakış", icon: LayoutDashboard, to: "/panel" },
   { label: "Üyeler", icon: Users, to: "/panel/uyeler" },
   { label: "Mesajlar", icon: MessagesSquare, to: "/panel/mesajlar" },
-  { label: "Roller", icon: Shield },
-  { label: "Kanallar", icon: Hash },
+  { label: "Roller", icon: Shield, to: "/panel/roller" },
+  { label: "Kanallar", icon: Hash, to: "/panel/kanallar" },
   { label: "Sunucu", icon: Server },
   { label: "Otomasyon", icon: Workflow },
   { label: "Koruma", icon: ShieldCheck },
-  { label: "Moderasyon", icon: Gavel },
+  { label: "Moderasyon", icon: Gavel, to: "/panel/moderasyon" },
   { label: "Panel", icon: KeyRound },
 ];
 

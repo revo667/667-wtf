@@ -12,7 +12,10 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PanelRouteImport } from './routes/panel'
 import { Route as PanelIndexRouteImport } from './routes/panel/index'
+import { Route as PanelKanallarRouteImport } from './routes/panel/kanallar'
 import { Route as PanelMesajlarRouteImport } from './routes/panel/mesajlar'
+import { Route as PanelModerasyonRouteImport } from './routes/panel/moderasyon'
+import { Route as PanelRollerRouteImport } from './routes/panel/roller'
 import { Route as PanelUyelerRouteImport } from './routes/panel/uyeler'
 
 const IndexRoute = IndexRouteImport.update({
@@ -30,9 +33,24 @@ const PanelIndexRoute = PanelIndexRouteImport.update({
   path: '/',
   getParentRoute: () => PanelRoute,
 } as any)
+const PanelKanallarRoute = PanelKanallarRouteImport.update({
+  id: '/kanallar',
+  path: '/kanallar',
+  getParentRoute: () => PanelRoute,
+} as any)
 const PanelMesajlarRoute = PanelMesajlarRouteImport.update({
   id: '/mesajlar',
   path: '/mesajlar',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelModerasyonRoute = PanelModerasyonRouteImport.update({
+  id: '/moderasyon',
+  path: '/moderasyon',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelRollerRoute = PanelRollerRouteImport.update({
+  id: '/roller',
+  path: '/roller',
   getParentRoute: () => PanelRoute,
 } as any)
 const PanelUyelerRoute = PanelUyelerRouteImport.update({
@@ -44,13 +62,19 @@ const PanelUyelerRoute = PanelUyelerRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/panel': typeof PanelRouteWithChildren
+  '/panel/kanallar': typeof PanelKanallarRoute
   '/panel/mesajlar': typeof PanelMesajlarRoute
+  '/panel/moderasyon': typeof PanelModerasyonRoute
+  '/panel/roller': typeof PanelRollerRoute
   '/panel/uyeler': typeof PanelUyelerRoute
   '/panel/': typeof PanelIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/panel/kanallar': typeof PanelKanallarRoute
   '/panel/mesajlar': typeof PanelMesajlarRoute
+  '/panel/moderasyon': typeof PanelModerasyonRoute
+  '/panel/roller': typeof PanelRollerRoute
   '/panel/uyeler': typeof PanelUyelerRoute
   '/panel': typeof PanelIndexRoute
 }
@@ -58,20 +82,41 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/panel': typeof PanelRouteWithChildren
+  '/panel/kanallar': typeof PanelKanallarRoute
   '/panel/mesajlar': typeof PanelMesajlarRoute
+  '/panel/moderasyon': typeof PanelModerasyonRoute
+  '/panel/roller': typeof PanelRollerRoute
   '/panel/uyeler': typeof PanelUyelerRoute
   '/panel/': typeof PanelIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/panel' | '/panel/mesajlar' | '/panel/uyeler' | '/panel/'
+  fullPaths:
+    | '/'
+    | '/panel'
+    | '/panel/kanallar'
+    | '/panel/mesajlar'
+    | '/panel/moderasyon'
+    | '/panel/roller'
+    | '/panel/uyeler'
+    | '/panel/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/panel/mesajlar' | '/panel/uyeler' | '/panel'
+  to:
+    | '/'
+    | '/panel/kanallar'
+    | '/panel/mesajlar'
+    | '/panel/moderasyon'
+    | '/panel/roller'
+    | '/panel/uyeler'
+    | '/panel'
   id:
     | '__root__'
     | '/'
     | '/panel'
+    | '/panel/kanallar'
     | '/panel/mesajlar'
+    | '/panel/moderasyon'
+    | '/panel/roller'
     | '/panel/uyeler'
     | '/panel/'
   fileRoutesById: FileRoutesById
@@ -104,11 +149,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelIndexRouteImport
       parentRoute: typeof PanelRoute
     }
+    '/panel/kanallar': {
+      id: '/panel/kanallar'
+      path: '/kanallar'
+      fullPath: '/panel/kanallar'
+      preLoaderRoute: typeof PanelKanallarRouteImport
+      parentRoute: typeof PanelRoute
+    }
     '/panel/mesajlar': {
       id: '/panel/mesajlar'
       path: '/mesajlar'
       fullPath: '/panel/mesajlar'
       preLoaderRoute: typeof PanelMesajlarRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/moderasyon': {
+      id: '/panel/moderasyon'
+      path: '/moderasyon'
+      fullPath: '/panel/moderasyon'
+      preLoaderRoute: typeof PanelModerasyonRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/roller': {
+      id: '/panel/roller'
+      path: '/roller'
+      fullPath: '/panel/roller'
+      preLoaderRoute: typeof PanelRollerRouteImport
       parentRoute: typeof PanelRoute
     }
     '/panel/uyeler': {
@@ -122,13 +188,19 @@ declare module '@tanstack/react-router' {
 }
 
 interface PanelRouteChildren {
+  PanelKanallarRoute: typeof PanelKanallarRoute
   PanelMesajlarRoute: typeof PanelMesajlarRoute
+  PanelModerasyonRoute: typeof PanelModerasyonRoute
+  PanelRollerRoute: typeof PanelRollerRoute
   PanelUyelerRoute: typeof PanelUyelerRoute
   PanelIndexRoute: typeof PanelIndexRoute
 }
 
 const PanelRouteChildren: PanelRouteChildren = {
+  PanelKanallarRoute: PanelKanallarRoute,
   PanelMesajlarRoute: PanelMesajlarRoute,
+  PanelModerasyonRoute: PanelModerasyonRoute,
+  PanelRollerRoute: PanelRollerRoute,
   PanelUyelerRoute: PanelUyelerRoute,
   PanelIndexRoute: PanelIndexRoute,
 }
