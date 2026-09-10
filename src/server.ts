@@ -77,7 +77,6 @@ const FORWARDED_HEADERS = [
   "user-agent",
   "x-session-bind",
   "x-background",
-  "last-event-id",
 ];
 
 async function proxyApi(request: Request, url: URL): Promise<Response> {
@@ -169,9 +168,13 @@ function withPanelHeaders(res: Response, nonce: string): Response {
 
 function withSiteHeaders(res: Response): Response {
   const out = new Response(res.body, res);
-  out.headers.set("x-content-type-options", "nosniff");
-  out.headers.set("x-frame-options", "DENY");
-  out.headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  const h = out.headers;
+  h.set("x-content-type-options", "nosniff");
+  h.set("x-frame-options", "DENY");
+  h.set("referrer-policy", "strict-origin-when-cross-origin");
+  h.set("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=()");
+  // includeSubDomains yok: 667.wtf'in bilinmeyen başka alt alan adlarını bozmasın.
+  if (!import.meta.env.DEV) h.set("strict-transport-security", "max-age=63072000");
   return out;
 }
 

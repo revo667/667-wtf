@@ -3,6 +3,12 @@ import { dateTime } from "./format";
 import type { MessageOut } from "./types";
 import { Avatar, Badge } from "./ui";
 
+/** Ek bağlantıları sadece Discord CDN'ine gidebilir (javascript: vb. hiçbir şey tıklanamaz). */
+const DISCORD_CDN = /^https:\/\/(cdn\.discordapp\.com|media\.discordapp\.net)\//;
+
+const attachmentClass =
+  "inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground";
+
 /** Mesaj logundaki tek mesaj: silinme ve düzenleme geçmişiyle birlikte. */
 export function MessageItem({ m, showAuthor = true }: { m: MessageOut; showAuthor?: boolean }) {
   const deleted = m.deleted_at !== null;
@@ -46,14 +52,20 @@ export function MessageItem({ m, showAuthor = true }: { m: MessageOut; showAutho
           <ul className="mt-2 flex flex-wrap gap-2">
             {m.attachments.map((a) => (
               <li key={a.url}>
-                <a
-                  href={a.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-muted-foreground hover:text-foreground"
-                >
-                  <Paperclip className="h-3 w-3" /> {a.filename}
-                </a>
+                {DISCORD_CDN.test(a.url) ? (
+                  <a
+                    href={a.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className={attachmentClass}
+                  >
+                    <Paperclip className="h-3 w-3" /> {a.filename}
+                  </a>
+                ) : (
+                  <span className={attachmentClass}>
+                    <Paperclip className="h-3 w-3" /> {a.filename}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

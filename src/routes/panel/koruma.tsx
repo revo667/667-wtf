@@ -59,11 +59,11 @@ const MODULES: Record<string, string> = {
   guard: "Yetki koruması",
   bots: "İzinsiz bot",
   vanity: "Özel davet",
+  panel: "Panel hesabı",
 };
 
 const SEVERITY: Record<string, { label: string; tone: "muted" | "accent" | "danger" }> = {
   info: { label: "bilgi", tone: "muted" },
-  warn: { label: "uyarı", tone: "accent" },
   high: { label: "müdahale", tone: "danger" },
   critical: { label: "kritik", tone: "danger" },
 };
@@ -102,10 +102,10 @@ function ProtectionPage() {
       </Card>
     );
   }
-  return <ProtectionAdmin owner={session.level === "owner"} />;
+  return <ProtectionAdmin owner={session.level === "owner"} me={session.username} />;
 }
 
-function ProtectionAdmin({ owner }: { owner: boolean }) {
+function ProtectionAdmin({ owner, me }: { owner: boolean; me: string }) {
   const q = useQuery({
     queryKey: ["panel", "protection"],
     queryFn: () => api<ProtectionOut>("GET", "/protection"),
@@ -120,8 +120,92 @@ function ProtectionAdmin({ owner }: { owner: boolean }) {
         </p>
       )}
       <ProtectionForm data={q.data} owner={owner} />
+      <Accounts owner={owner} me={me} />
       <Events />
     </div>
+  );
+}
+
+interface Account {
+  username: string;
+  level: string;
+  sessions: number;
+  frozen_at: number | null;
+  frozen_reason: string | null;
+  frozen_by: string | null;
+}
+
+function Accounts({ owner, me }: { owner: boolean; me: string }) {
+  const q = useQuery({
+    queryKey: ["panel", "accounts"],
+    queryFn: () => api<{ items: Account[] }>("GET", "/accounts"),
+  });
+  const freeze = usePanelAction(
+    (name: string) =>
+      api("POST", `/accounts/${encodeURIComponent(name)}/freeze`, { reason: "owner kararı" }),
+    { success: "Hesap donduruldu" },
+  );
+  const unfreeze = usePanelAction(
+    (name: string) => api("POST", `/accounts/${encodeURIComponent(name)}/unfreeze`),
+    { success: "Hesap açıldı" },
+  );
+
+  return (
+    <Card title="Panel hesapları">
+      <p className="mb-3 text-xs text-muted-foreground">
+        Bir hesap 60 saniyede 5 ban/kick, 3 kanal/rol silme, 5 toplu silme, 10 susturma ya da 10
+        emoji/davet/webhook silme sınırını aşarsa anında dondurulur ve oturumları kapanır. Son 5
+        dakikadaki yasak ve susturmaları geri alınır. Dondurulan hesap giriş yapamaz; sadece owner
+        açabilir.
+      </p>
+      {q.error ? (
+        <Notice error={q.error} />
+      ) : !q.data ? null : (
+        <ul className="divide-y divide-border/50">
+          {q.data.items.map((a) => (
+            <li
+              key={a.username}
+              className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm"
+            >
+              <span className="font-medium">{a.username}</span>
+              <Badge>{a.level}</Badge>
+              {a.frozen_at ? (
+                <Badge tone="danger">donduruldu</Badge>
+              ) : a.sessions > 0 ? (
+                <Badge tone="accent">çevrimiçi</Badge>
+              ) : null}
+              {owner && a.username !== me && (
+                <span className="ml-auto">
+                  {a.frozen_at ? (
+                    <ConfirmButton
+                      label="Aç"
+                      confirmText="Hesap açılsın mı?"
+                      danger={false}
+                      busy={unfreeze.busy}
+                      onConfirm={() => unfreeze.run(a.username)}
+                    />
+                  ) : (
+                    <ConfirmButton
+                      label="Dondur"
+                      confirmText="Hesap dondurulsun ve oturumları kapansın mı?"
+                      busy={freeze.busy}
+                      onConfirm={() => freeze.run(a.username)}
+                    />
+                  )}
+                </span>
+              )}
+              {a.frozen_at && (
+                <p className="w-full text-xs text-muted-foreground">
+                  {ago(a.frozen_at)} · {a.frozen_by ?? "?"}
+                  {a.frozen_reason ? ` · ${a.frozen_reason}` : ""}
+                </p>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+      <ActionResult msg={freeze.msg ?? unfreeze.msg} />
+    </Card>
   );
 }
 
@@ -379,7 +463,7 @@ function ProtectionForm({ data, owner }: { data: ProtectionOut; owner: boolean }
   );
 }
 
-type ModuleFilter = "" | "guard" | "bots" | "vanity";
+type ModuleFilter = "" | "guard" | "bots" | "vanity" | "panel";
 
 function Events() {
   const qc = useQueryClient();
@@ -413,6 +497,7 @@ function Events() {
             { value: "guard", label: "Yetki" },
             { value: "bots", label: "Bot" },
             { value: "vanity", label: "Davet" },
+            { value: "panel", label: "Hesap" },
           ]}
         />
       }

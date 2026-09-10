@@ -9,7 +9,7 @@ export function MusicToggle({ src = "/music/theme.mp3" }: { src?: string }) {
   useEffect(() => {
     const audio = audioRef.current;
     if (!audio) return;
-    audio.volume = volume;
+    // Ses düzeyini aşağıdaki efekt ayarlar (açılışta da çalışır).
 
     const tryPlay = () => {
       audio

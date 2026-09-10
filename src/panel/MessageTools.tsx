@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { api } from "./api";
 import {
   ActionResult,
@@ -369,5 +369,3 @@ export function DeleteMessageButton({ m }: { m: MessageOut }) {
     </span>
   );
 }
-
-export const TrashIcon = Trash2;
