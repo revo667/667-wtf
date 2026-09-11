@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Folder, Hash, Lock, Megaphone, MessagesSquare, Mic, Plus, Radio } from "lucide-react";
 import { api } from "@/panel/api";
 import {
@@ -71,21 +71,44 @@ function KindIcon({ kind }: { kind: string }) {
   }
 }
 
-type Editing = { mode: "new"; parent: string } | { mode: "edit"; channel: ChannelOut } | null;
+/** Unix ms → Türkiye tarihi "2026-09-11" (loglanan kanalın yeni adında kullanılır). */
+const trDate = (ms: number) =>
+  new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Istanbul" }).format(ms);
+
+/** Adında "log" geçen en alttaki kategori. */
+function findLogCategory(categories: ChannelOut[]): ChannelOut | undefined {
+  const logs = categories.filter((c) => /log/i.test(c.name));
+  return logs[logs.length - 1];
+}
+
+interface ArchiveResult {
+  copy_id: string;
+  moved: string[];
+  warnings: string[];
+}
+
+type Editing =
+  | { mode: "new"; parent: string }
+  | { mode: "edit"; channel: ChannelOut }
+  | { mode: "tidy"; category: ChannelOut }
+  | null;
 
 function ChannelsPage() {
   const session = useSession();
   const canEdit = session.level !== "mod";
+  const isOwner = session.level === "owner";
   const q = useQuery({
     queryKey: ["panel", "channels"],
     queryFn: () => api<{ channels: ChannelOut[] }>("GET", "/channels"),
   });
   const [editing, setEditing] = useState<Editing>(null);
+  const [archived, setArchived] = useState<{ name: string; result: ArchiveResult } | null>(null);
   const close = useCallback(() => setEditing(null), []);
 
   if (q.error) return <Notice error={q.error} />;
   const channels = q.data?.channels ?? [];
   const categories = channels.filter((c) => c.kind === "category");
+  const logCategory = findLogCategory(categories);
   const loose = channels.filter((c) => c.kind !== "category" && !c.parent_id);
   const childrenOf = (id: string) => channels.filter((c) => c.parent_id === id);
   const selected =
@@ -132,6 +155,36 @@ function ChannelsPage() {
           </button>
         </div>
       )}
+      {archived && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-xl border border-accent/40 bg-card/70 px-4 py-3 text-sm"
+        >
+          <div className="flex-1 space-y-1">
+            <p>
+              #{archived.name} loglandı; yerine aynı ayar ve izinlerle yeni bir #{archived.name}{" "}
+              açıldı.
+            </p>
+            {archived.result.moved.length > 0 && (
+              <p className="text-muted-foreground">
+                Yeni kanala çevrilen ayarlar: {archived.result.moved.join(", ")}
+              </p>
+            )}
+            {archived.result.warnings.map((w) => (
+              <p key={w} className="text-destructive">
+                {w}
+              </p>
+            ))}
+          </div>
+          <button
+            type="button"
+            onClick={() => setArchived(null)}
+            className="text-xs text-muted-foreground hover:text-foreground"
+          >
+            kapat
+          </button>
+        </div>
+      )}
       {!q.data ? (
         <p className="py-8 text-center text-sm text-muted-foreground">Yükleniyor…</p>
       ) : (
@@ -148,6 +201,15 @@ function ChannelsPage() {
               action={
                 canEdit && (
                   <span className="flex gap-1">
+                    {isOwner && cat.id === logCategory?.id && (
+                      <button
+                        type="button"
+                        onClick={() => setEditing({ mode: "tidy", category: cat })}
+                        className="rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-background/60 hover:text-foreground"
+                      >
+                        arşivi düzenle
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => setEditing({ mode: "new", parent: cat.id })}
@@ -179,17 +241,28 @@ function ChannelsPage() {
       <Drawer
         open={editing !== null}
         onClose={close}
-        title={editing?.mode === "new" ? "Yeni kanal" : (selected?.name ?? "")}
+        title={
+          editing?.mode === "new"
+            ? "Yeni kanal"
+            : editing?.mode === "tidy"
+              ? `${editing.category.name} · arşivi düzenle`
+              : (selected?.name ?? "")
+        }
       >
         {editing?.mode === "new" && (
           <NewChannel parent={editing.parent} categories={categories} onDone={close} />
         )}
+        {editing?.mode === "tidy" && <TidyLog category={editing.category} />}
         {selected && (
           <EditChannel
             key={selected.id}
             channel={selected}
             categories={categories}
             onDone={close}
+            onArchived={(result) => {
+              setArchived({ name: selected.name, result });
+              close();
+            }}
           />
         )}
       </Drawer>
@@ -277,10 +350,12 @@ function EditChannel({
   channel,
   categories,
   onDone,
+  onArchived,
 }: {
   channel: ChannelOut;
   categories: ChannelOut[];
   onDone: () => void;
+  onArchived: (result: ArchiveResult) => void;
 }) {
   const [name, setName] = useState(channel.name);
   const [topic, setTopic] = useState(channel.topic ?? "");
@@ -399,7 +474,237 @@ function EditChannel({
         </div>
       </section>
 
+      {!isCategory && (
+        <ArchiveChannel channel={channel} categories={categories} onArchived={onArchived} />
+      )}
+
       <Overwrites channel={channel} />
+    </div>
+  );
+}
+
+/** Kanal loglama: aynısı aynı yere açılır, bu kanal mesajlarıyla log kategorisinin en altına iner. */
+function ArchiveChannel({
+  channel,
+  categories,
+  onArchived,
+}: {
+  channel: ChannelOut;
+  categories: ChannelOut[];
+  onArchived: (result: ArchiveResult) => void;
+}) {
+  const targets = categories.filter((c) => c.id !== channel.parent_id);
+  const [categoryId, setCategoryId] = useState(
+    () => (findLogCategory(targets) ?? targets[targets.length - 1])?.id ?? "",
+  );
+  const [name, setName] = useState(() => `${channel.name}-${trDate(Date.now())}`.slice(0, 100));
+  const result = useRef<ArchiveResult | null>(null);
+  const archive = usePanelAction(
+    async () => {
+      result.current = await api<ArchiveResult>("POST", `/channels/${channel.id}/archive`, {
+        category_id: categoryId,
+        name: name.trim(),
+      });
+    },
+    {
+      success: "Kanal loglandı",
+      onDone: () => {
+        if (result.current) onArchived(result.current);
+      },
+    },
+  );
+
+  return (
+    <section className="space-y-3 border-t border-border pt-5">
+      <div>
+        <h3 className="text-sm font-medium">Loga at</h3>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Kanal silinmez: aynı ayar ve izinlerle bir kopyası bu kanalın yerine açılır. Bu kanal eski
+          mesajlarıyla birlikte seçilen kategorinin en altına taşınır, adı değişir ve izinleri
+          kategoriyle eşitlenir.
+        </p>
+      </div>
+      <label className="flex items-center gap-2 text-sm">
+        <span className="text-muted-foreground">Log kategorisi</span>
+        <select
+          value={categoryId}
+          onChange={(e) => setCategoryId(e.target.value)}
+          className={selectClass}
+        >
+          {targets.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="block space-y-1.5 text-sm">
+        <span className="text-muted-foreground">Loglanan kanalın yeni adı</span>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={100}
+          className={inputClass}
+        />
+      </label>
+      <div className="flex flex-wrap items-center gap-3">
+        <ConfirmButton
+          label="Loga at"
+          danger={false}
+          confirmText={`#${channel.name} loga atılsın mı?`}
+          busy={archive.busy || !categoryId || !name.trim()}
+          onConfirm={() => archive.run(undefined)}
+        />
+        <ActionResult msg={archive.msg} />
+      </div>
+    </section>
+  );
+}
+
+interface PlanRow {
+  id: string;
+  name: string;
+  kind: string;
+  last_at: number;
+  suggested: string;
+  synced: boolean;
+  public: boolean;
+  uses: string[];
+}
+
+/** Log kategorisindeki kanallar tek seferde "ad-tarih" düzenine getirilir (önizlemeli). */
+function TidyLog({ category }: { category: ChannelOut }) {
+  // Anahtar "panel" ile başlamaz: panel işlemlerinden sonra kendiliğinden yenilenmesin. Her kanalın
+  // son mesajı Discord'dan tek tek okunur ve düzenleme arka planda sürer.
+  const q = useQuery({
+    queryKey: ["channel-archive-plan", category.id],
+    queryFn: () => api<{ rows: PlanRow[] }>("GET", `/channel-archive/plan?category=${category.id}`),
+    refetchOnWindowFocus: false,
+  });
+  if (q.error) return <Notice error={q.error} />;
+  if (!q.data) {
+    return (
+      <p className="py-8 text-center text-sm text-muted-foreground">
+        Kanalların son mesajlarına bakılıyor…
+      </p>
+    );
+  }
+  return (
+    <TidyTable
+      key={q.dataUpdatedAt}
+      category={category}
+      rows={q.data.rows}
+      refreshing={q.isFetching}
+      onRefresh={() => void q.refetch()}
+    />
+  );
+}
+
+function TidyTable({
+  category,
+  rows,
+  refreshing,
+  onRefresh,
+}: {
+  category: ChannelOut;
+  rows: PlanRow[];
+  refreshing: boolean;
+  onRefresh: () => void;
+}) {
+  const [picked, setPicked] = useState(
+    () => new Set(rows.filter((r) => r.uses.length === 0).map((r) => r.id)),
+  );
+  const [names, setNames] = useState<Record<string, string>>(() =>
+    Object.fromEntries(rows.map((r) => [r.id, r.suggested])),
+  );
+  // Seçilmeyenler üstte kalır; seçilenler (sunucudan eskiden yeniye gelir) alta dizilir.
+  const kept = rows.filter((r) => !picked.has(r.id));
+  const chosen = rows.filter((r) => picked.has(r.id));
+  const items = chosen.map((r) => ({ id: r.id, name: (names[r.id] ?? "").trim() }));
+  const apply = usePanelAction(
+    () => api("POST", "/channel-archive/tidy", { category_id: category.id, items }),
+    {
+      success:
+        "Düzenleme başladı. Bitince denetim kaydına yazılır; birkaç saniye sonra listeyi yenile.",
+    },
+  );
+  const toggle = (id: string, on: boolean) =>
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+
+  return (
+    <div className="space-y-4">
+      <p className="text-sm text-muted-foreground">
+        Seçilen kanalların adı son mesaj tarihine göre{" "}
+        <span className="text-foreground">ad-tarih</span> olur ve izinleri {category.name}{" "}
+        kategorisiyle eşitlenir. Seçilmeyenler üstte olduğu gibi kalır, seçilenler eskiden yeniye
+        alta dizilir. Ayarlarda kullanılan kanallar baştan seçili gelmez.
+      </p>
+      {rows.length === 0 && <Notice empty="Kategoride kanal yok" />}
+      <ol className="space-y-2">
+        {[...kept, ...chosen].map((r, i) => {
+          const on = picked.has(r.id);
+          const badges = r.uses.length > 0 || r.public || !r.synced;
+          return (
+            <li key={r.id} className="rounded-xl border border-border px-3 py-2">
+              <div className="flex items-center gap-2 text-sm">
+                <span className="w-5 shrink-0 text-right text-xs text-muted-foreground">
+                  {i + 1}
+                </span>
+                <input
+                  type="checkbox"
+                  checked={on}
+                  onChange={(e) => toggle(r.id, e.target.checked)}
+                  aria-label={`#${r.name} düzenlensin`}
+                  className="h-4 w-4 shrink-0 accent-accent"
+                />
+                <KindIcon kind={r.kind} />
+                <span className="min-w-0 flex-1 truncate">{r.name}</span>
+                <span className="shrink-0 text-xs text-muted-foreground">
+                  son mesaj {trDate(r.last_at)}
+                </span>
+              </div>
+              {badges && (
+                <div className="mt-1.5 flex flex-wrap gap-1 pl-7">
+                  {r.uses.map((u) => (
+                    <Badge key={u} tone="danger">
+                      kullanımda: {u}
+                    </Badge>
+                  ))}
+                  {r.public && <Badge tone="danger">herkes görüyor</Badge>}
+                  {!r.synced && <Badge>izinler kategoriden farklı</Badge>}
+                </div>
+              )}
+              {on && (
+                <input
+                  value={names[r.id] ?? ""}
+                  onChange={(e) => setNames((prev) => ({ ...prev, [r.id]: e.target.value }))}
+                  maxLength={100}
+                  aria-label={`#${r.name} yeni adı`}
+                  className={`${inputClass} mt-2`}
+                />
+              )}
+            </li>
+          );
+        })}
+      </ol>
+      <div className="flex flex-wrap items-center gap-3">
+        <ConfirmButton
+          label={`Uygula (${chosen.length})`}
+          danger={false}
+          confirmText={`${chosen.length} kanal yeniden adlandırılıp izinleri eşitlensin mi?`}
+          busy={apply.busy || chosen.length === 0 || items.some((it) => !it.name)}
+          onConfirm={() => apply.run(undefined)}
+        />
+        <button type="button" onClick={onRefresh} disabled={refreshing} className={buttonClass}>
+          {refreshing ? "Yenileniyor…" : "Yenile"}
+        </button>
+        <ActionResult msg={apply.msg} />
+      </div>
     </div>
   );
 }
