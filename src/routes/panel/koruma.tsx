@@ -40,6 +40,7 @@ interface Protection {
   new_accounts: { enabled: boolean; min_age_days: number; quarantine_role: string | null };
   exempt: { roles: string[]; channels: string[] };
   backups: { enabled: boolean; keep: number };
+  boosts: { enabled: boolean; threshold: number; interval_hours: number };
 }
 
 interface BotRow {
@@ -55,6 +56,9 @@ interface Status {
   allowed_bots: { id: string; name: string | null }[];
   env_allowed_bots: string[];
   raid_locked_until: number | null;
+  boost_count: number;
+  boost_tier: number;
+  boost_notice: { at: number; hours: number | null; counts: number[]; text: string } | null;
 }
 
 interface ProtectionOut {
@@ -120,6 +124,7 @@ function normalize(p: Protection): Protection {
     new_accounts: { ...p.new_accounts, quarantine_role: p.new_accounts.quarantine_role || null },
     exempt: { roles: ids(p.exempt.roles), channels: ids(p.exempt.channels) },
     backups: { ...p.backups },
+    boosts: { ...p.boosts },
   };
 }
 
@@ -293,7 +298,8 @@ function ProtectionForm({ data, owner }: { data: ProtectionOut; owner: boolean }
             />
             <p className="text-xs text-muted-foreground">
               İzin listesinde olmayan bir bot sunucuya eklenirse hemen atılır. Botu eklemeden önce
-              ID'sini buraya ekle.
+              ID'sini buraya ekle. İzinli botların rollerindeki yetkilere yetki koruması dokunmaz;
+              böyle bir rol bir insana verilirse rol o kişiden geri alınır.
             </p>
             <div>
               <span className="mb-1.5 block text-xs text-muted-foreground">İzinli botlar</span>
@@ -783,6 +789,48 @@ function ProtectionForm({ data, owner }: { data: ProtectionOut; owner: boolean }
             <p className="text-xs text-muted-foreground">
               Roller, kanallar, kanal izinleri ve kimde hangi rol olduğu yedeklenir. Elle yedek ve
               geri yükleme Yedekler sayfasından yapılır.
+            </p>
+          </div>
+        </Card>
+        <Card title="Takviye takibi">
+          <div className="space-y-3">
+            <Toggle
+              checked={form.boosts.enabled}
+              disabled={locked}
+              onChange={(enabled) => setForm({ ...form, boosts: { ...form.boosts, enabled } })}
+              label="Açık"
+            />
+            <p className="text-sm">
+              <span className="text-muted-foreground">Şu an: </span>
+              {status.boost_count} takviye · seviye {status.boost_tier}
+            </p>
+            {status.boost_notice && (
+              <p className="text-xs text-destructive">
+                Discord bildirimi ({ago(status.boost_notice.at)}): {status.boost_notice.text}
+              </p>
+            )}
+            <NumberField
+              label="Uyarı eşiği (takviye)"
+              value={form.boosts.threshold}
+              min={1}
+              max={100}
+              disabled={locked}
+              onChange={(threshold) => setForm({ ...form, boosts: { ...form.boosts, threshold } })}
+            />
+            <NumberField
+              label="Hatırlatma aralığı (saat)"
+              value={form.boosts.interval_hours}
+              min={1}
+              max={24}
+              disabled={locked}
+              onChange={(interval_hours) =>
+                setForm({ ...form, boosts: { ...form.boosts, interval_hours } })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Takviye sayısı eşiğin altına düşerse ya da Discord takviyelerin düşeceğini bildirirse
+              owner'lara hemen, sorun geçene kadar da bu aralıkla Telegram uyarısı gider. Seviye 3
+              (14 takviye) kaybı özel davet bağlantısının da kaybı demektir.
             </p>
           </div>
         </Card>
