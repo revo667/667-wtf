@@ -81,13 +81,14 @@ export async function api<T = unknown>(
  * Canlı olay akışı (SSE). EventSource özel header gönderemediği için fetch ile okunur.
  * Akış bitince (sunucu kapattı) döner; ağ hatasında fırlatır.
  */
-export async function streamEvents(
-  onEvent: (ev: LiveEvent) => void,
+export async function streamSse<T>(
+  path: string,
+  onEvent: (ev: T) => void,
   signal: AbortSignal,
   onOpen: () => void,
 ): Promise<void> {
   if (!bind) return;
-  const res = await fetch("/api/events", {
+  const res = await fetch(`/api${path}`, {
     headers: { "X-Session-Bind": bind, "X-Background": "1", Accept: "text/event-stream" },
     credentials: "same-origin",
     cache: "no-store",
@@ -119,12 +120,21 @@ export async function streamEvents(
         .join("\n");
       if (!data) continue; // ": ka" keepalive satırları
       try {
-        onEvent(JSON.parse(data) as LiveEvent);
+        onEvent(JSON.parse(data) as T);
       } catch {
         // Bozuk olay atlanır.
       }
     }
   }
+}
+
+/** Panelin canlı olay akışı (`/api/events`). */
+export function streamEvents(
+  onEvent: (ev: LiveEvent) => void,
+  signal: AbortSignal,
+  onOpen: () => void,
+): Promise<void> {
+  return streamSse<LiveEvent>("/events", onEvent, signal, onOpen);
 }
 
 /** Sayfa kapanırken/yenilenirken sunucudaki oturumu da hemen öldürür. */

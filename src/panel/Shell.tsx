@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Archive,
+  Bot,
   Gavel,
   Hash,
   KeyRound,
@@ -30,6 +31,7 @@ type NavTo =
   | "/panel/otomasyon"
   | "/panel/koruma"
   | "/panel/yedekler"
+  | "/panel/bot"
   | "/panel/moderasyon"
   | "/panel/yonetim";
 // `to` olmayanlar henüz yapılmamış modüller: menüde görünür ama tıklanamaz.
@@ -45,6 +47,7 @@ const NAV: NavItem[] = [
   { label: "Otomasyon", icon: Workflow, to: "/panel/otomasyon" },
   { label: "Koruma", icon: ShieldCheck, to: "/panel/koruma" },
   { label: "Yedekler", icon: Archive, to: "/panel/yedekler" },
+  { label: "Bot", icon: Bot, to: "/panel/bot" },
   { label: "Moderasyon", icon: Gavel, to: "/panel/moderasyon" },
   { label: "Panel", icon: KeyRound, to: "/panel/yonetim" },
 ];

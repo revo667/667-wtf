@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PanelRouteImport } from './routes/panel'
 import { Route as PanelIndexRouteImport } from './routes/panel/index'
+import { Route as PanelBotRouteImport } from './routes/panel/bot'
 import { Route as PanelKanallarRouteImport } from './routes/panel/kanallar'
 import { Route as PanelKorumaRouteImport } from './routes/panel/koruma'
 import { Route as PanelMesajlarRouteImport } from './routes/panel/mesajlar'
@@ -36,6 +37,11 @@ const PanelRoute = PanelRouteImport.update({
 const PanelIndexRoute = PanelIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelBotRoute = PanelBotRouteImport.update({
+  id: '/bot',
+  path: '/bot',
   getParentRoute: () => PanelRoute,
 } as any)
 const PanelKanallarRoute = PanelKanallarRouteImport.update({
@@ -92,6 +98,7 @@ const PanelYonetimRoute = PanelYonetimRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/panel': typeof PanelRouteWithChildren
+  '/panel/bot': typeof PanelBotRoute
   '/panel/kanallar': typeof PanelKanallarRoute
   '/panel/koruma': typeof PanelKorumaRoute
   '/panel/mesajlar': typeof PanelMesajlarRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/panel/bot': typeof PanelBotRoute
   '/panel/kanallar': typeof PanelKanallarRoute
   '/panel/koruma': typeof PanelKorumaRoute
   '/panel/mesajlar': typeof PanelMesajlarRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/panel': typeof PanelRouteWithChildren
+  '/panel/bot': typeof PanelBotRoute
   '/panel/kanallar': typeof PanelKanallarRoute
   '/panel/koruma': typeof PanelKorumaRoute
   '/panel/mesajlar': typeof PanelMesajlarRoute
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/panel'
+    | '/panel/bot'
     | '/panel/kanallar'
     | '/panel/koruma'
     | '/panel/mesajlar'
@@ -153,6 +163,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/panel/bot'
     | '/panel/kanallar'
     | '/panel/koruma'
     | '/panel/mesajlar'
@@ -168,6 +179,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/panel'
+    | '/panel/bot'
     | '/panel/kanallar'
     | '/panel/koruma'
     | '/panel/mesajlar'
@@ -207,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/panel/'
       preLoaderRoute: typeof PanelIndexRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/bot': {
+      id: '/panel/bot'
+      path: '/bot'
+      fullPath: '/panel/bot'
+      preLoaderRoute: typeof PanelBotRouteImport
       parentRoute: typeof PanelRoute
     }
     '/panel/kanallar': {
@@ -283,6 +302,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface PanelRouteChildren {
+  PanelBotRoute: typeof PanelBotRoute
   PanelKanallarRoute: typeof PanelKanallarRoute
   PanelKorumaRoute: typeof PanelKorumaRoute
   PanelMesajlarRoute: typeof PanelMesajlarRoute
@@ -297,6 +317,7 @@ interface PanelRouteChildren {
 }
 
 const PanelRouteChildren: PanelRouteChildren = {
+  PanelBotRoute: PanelBotRoute,
   PanelKanallarRoute: PanelKanallarRoute,
   PanelKorumaRoute: PanelKorumaRoute,
   PanelMesajlarRoute: PanelMesajlarRoute,
