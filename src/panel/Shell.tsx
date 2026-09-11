@@ -7,6 +7,7 @@ import {
   Hash,
   KeyRound,
   LayoutDashboard,
+  LayoutTemplate,
   LogOut,
   MessagesSquare,
   Server,
@@ -25,6 +26,7 @@ type NavTo =
   | "/panel"
   | "/panel/uyeler"
   | "/panel/mesajlar"
+  | "/panel/embed"
   | "/panel/roller"
   | "/panel/kanallar"
   | "/panel/sunucu"
@@ -41,6 +43,7 @@ const NAV: NavItem[] = [
   { label: "Genel Bakış", icon: LayoutDashboard, to: "/panel" },
   { label: "Üyeler", icon: Users, to: "/panel/uyeler" },
   { label: "Mesajlar", icon: MessagesSquare, to: "/panel/mesajlar" },
+  { label: "Embed", icon: LayoutTemplate, to: "/panel/embed" },
   { label: "Roller", icon: Shield, to: "/panel/roller" },
   { label: "Kanallar", icon: Hash, to: "/panel/kanallar" },
   { label: "Sunucu", icon: Server, to: "/panel/sunucu" },

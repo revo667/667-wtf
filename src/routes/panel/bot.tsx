@@ -11,6 +11,7 @@ import {
   primaryButtonClass,
   usePanelAction,
 } from "@/panel/actions";
+import { BotProfile } from "@/panel/BotProfile";
 import { Drawer } from "@/panel/Drawer";
 import { dateTime, roleHex } from "@/panel/format";
 import { useMeta } from "@/panel/hooks";
@@ -88,10 +89,11 @@ interface LogLine {
   text: string;
 }
 
-type Tab = "genel" | "komutlar" | "paneller" | "log";
+type Tab = "genel" | "profil" | "komutlar" | "paneller" | "log";
 
 const TABS: { value: Tab; label: string }[] = [
   { value: "genel", label: "Genel" },
+  { value: "profil", label: "Durum ve profil" },
   { value: "komutlar", label: "Komutlar" },
   { value: "paneller", label: "Rol panelleri" },
   { value: "log", label: "Terminal logu" },
@@ -120,6 +122,7 @@ function BotPage() {
 
   let body;
   if (tab === "paneller") body = <RolePanels />;
+  else if (tab === "profil") body = <BotProfile isOwner={isOwner} />;
   else if (tab === "log") body = <Terminal />;
   else if (q.error) body = <Notice error={q.error} />;
   else if (!q.data)

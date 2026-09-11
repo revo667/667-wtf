@@ -1,12 +1,13 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { keepPreviousData, useInfiniteQuery } from "@tanstack/react-query";
+import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
+import { keepPreviousData, useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { RefreshCw, Search, X } from "lucide-react";
+import { LayoutTemplate, RefreshCw, Search, X } from "lucide-react";
 import { api } from "@/panel/api";
+import { buttonClass } from "@/panel/actions";
 import { useDebounced, useMeta } from "@/panel/hooks";
 import { useLive } from "@/panel/live";
 import { MessageItem } from "@/panel/MessageItem";
-import { Composer, DeleteMessageButton, PurgeTool } from "@/panel/MessageTools";
+import { DeleteMessageButton, PurgeTool } from "@/panel/MessageTools";
 import { useSession } from "@/panel/session";
 import type { MessagePage } from "@/panel/types";
 import { Card, Notice, Segmented, selectClass } from "@/panel/ui";
@@ -42,6 +43,13 @@ function MessagesPage() {
 
   const meta = useMeta();
   const channels = (meta.data?.channels ?? []).filter((c) => c.kind !== "category");
+  // Botun kendi mesajları Embed sekmesinde düzenlenebilir.
+  const bot = useQuery({
+    queryKey: ["panel", "bot"],
+    queryFn: () => api<{ user: { id: string } }>("GET", "/bot"),
+    enabled: isAdmin,
+  });
+  const botId = bot.data?.user.id;
 
   const msgs = useInfiniteQuery({
     queryKey: ["panel", "messages", q, channel, author, only],
@@ -83,7 +91,17 @@ function MessagesPage() {
     <div className="space-y-4">
       {isAdmin && (
         <div className="grid gap-4">
-          <Composer />
+          <Card title="Bot ile mesaj">
+            <div className="flex flex-wrap items-center gap-3 text-sm">
+              <p className="text-muted-foreground">
+                Mesaj ve embed gönderme, botun mesajlarını düzenleme ve karşılama tasarımı Embed
+                sekmesinde.
+              </p>
+              <Link to="/panel/embed" className={buttonClass}>
+                <LayoutTemplate className="h-3.5 w-3.5" /> Embed sekmesi
+              </Link>
+            </div>
+          </Card>
           <PurgeTool />
         </div>
       )}
@@ -163,7 +181,16 @@ function MessagesPage() {
             {items.map((m) => (
               <div key={m.id} className="relative">
                 <MessageItem m={m} />
-                <div className="absolute top-2 right-0">
+                <div className="absolute top-2 right-0 flex items-center gap-2">
+                  {botId && m.author_id === botId && !m.deleted_at && (
+                    <Link
+                      to="/panel/embed"
+                      search={{ hedef: "duzenle", kanal: m.channel_id, mesaj: m.id }}
+                      className={buttonClass}
+                    >
+                      düzenle
+                    </Link>
+                  )}
                   <DeleteMessageButton m={m} />
                 </div>
               </div>

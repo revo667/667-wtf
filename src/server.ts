@@ -136,7 +136,8 @@ function panelCsp(nonce: string): string {
     "default-src 'self'",
     `script-src 'nonce-${nonce}' 'strict-dynamic'`,
     `style-src 'self' 'nonce-${nonce}'`,
-    "img-src 'self' data: https://cdn.discordapp.com https://media.discordapp.net",
+    // Embed önizlemesi kullanıcının girdiği https görsellerini gösterir; script/bağlantı yine kısıtlı.
+    "img-src 'self' data: https:",
     "font-src 'self'",
     "connect-src 'self'",
     "object-src 'none'",

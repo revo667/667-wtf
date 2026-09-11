@@ -40,9 +40,17 @@ export interface RoleMeta {
   managed: boolean;
 }
 
+export interface EmojiMeta {
+  id: string;
+  name: string;
+  animated: boolean;
+  url: string;
+}
+
 export interface Meta {
   channels: ChannelMeta[];
   roles: RoleMeta[];
+  emojis: EmojiMeta[];
 }
 
 export interface DayRow {

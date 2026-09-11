@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { Link, createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "@/panel/api";
@@ -24,6 +24,8 @@ interface Greeting {
   message: string;
   embed: boolean;
   color: number;
+  /** Embed sekmesindeki tasarım; varsa mesaj bu tasarımla gider. Sadece Embed sekmesinden değişir. */
+  design: unknown;
 }
 
 interface Logs {
@@ -51,12 +53,15 @@ const LOGS: { key: keyof Logs; label: string; hint: string }[] = [
   { key: "protection", label: "Koruma logu", hint: "koruma modüllerinin müdahaleleri" },
 ];
 
-/** Boş seçimleri null yapar; kaydedilen ile formdaki karşılaştırılabilsin. */
+/**
+ * Boş seçimleri null yapar; kaydedilen ile formdaki karşılaştırılabilsin. Tasarımlar formun
+ * parçası değil (Embed sekmesinde kaydedilir, sunucu formdan geleni yok sayar).
+ */
 function clean(a: Automation): Automation {
   const ch = (v: string | null) => (v ? v : null);
   return {
-    welcome: { ...a.welcome, channel_id: ch(a.welcome.channel_id) },
-    leave: { ...a.leave, channel_id: ch(a.leave.channel_id) },
+    welcome: { ...a.welcome, channel_id: ch(a.welcome.channel_id), design: null },
+    leave: { ...a.leave, channel_id: ch(a.leave.channel_id), design: null },
     autorole: { ...a.autorole, role_ids: [...a.autorole.role_ids].sort() },
     logs: {
       members: ch(a.logs.members),
@@ -251,6 +256,7 @@ function AutomationForm({ saved }: { saved: Automation }) {
       <div className="grid gap-4 xl:grid-cols-2">
         <GreetingCard
           title="Karşılama mesajı"
+          kind="welcome"
           value={form.welcome}
           saved={saved.welcome}
           onChange={(welcome) => setForm({ ...form, welcome })}
@@ -261,6 +267,7 @@ function AutomationForm({ saved }: { saved: Automation }) {
         />
         <GreetingCard
           title="Ayrılma mesajı"
+          kind="leave"
           value={form.leave}
           saved={saved.leave}
           onChange={(leave) => setForm({ ...form, leave })}
@@ -348,6 +355,7 @@ function ChannelSelect({
 
 function GreetingCard({
   title,
+  kind,
   value,
   saved,
   onChange,
@@ -357,6 +365,7 @@ function GreetingCard({
   onTest,
 }: {
   title: string;
+  kind: "welcome" | "leave";
   value: Greeting;
   saved: Greeting;
   onChange: (g: Greeting) => void;
@@ -384,53 +393,77 @@ function GreetingCard({
             empty="Kanal seç…"
           />
         </label>
-        <label className="block space-y-1.5 text-sm">
-          <span className="block text-muted-foreground">Mesaj</span>
-          <textarea
-            value={value.message}
-            onChange={(e) => set({ message: e.target.value })}
-            maxLength={1500}
-            rows={3}
-            className={`${inputClass} h-auto py-2`}
-          />
-          <span className="block text-xs text-muted-foreground">
-            {"{user}"} üyeyi etiketler · {"{name}"} adı · {"{server}"} sunucu adı · {"{count}"} üye
-            sayısı. @everyone ve roller asla etiketlenmez.
-          </span>
-        </label>
-        <div className="flex flex-wrap items-center gap-4">
-          <Toggle
-            checked={value.embed}
-            onChange={(embed) => set({ embed })}
-            label="Gömülü (embed)"
-          />
-          {value.embed && (
-            <label className="inline-flex items-center gap-2 text-sm">
-              <span className="text-muted-foreground">Renk</span>
-              <input
-                type="color"
-                value={hex(value.color)}
-                onChange={(e) => set({ color: parseInt(e.target.value.slice(1), 16) })}
-                className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
-              />
-            </label>
-          )}
-        </div>
-        <div>
-          <span className="mb-1.5 block text-xs text-muted-foreground">Görünüm</span>
-          {value.embed ? (
-            <div
-              className="rounded-md border-l-4 bg-foreground/5 px-3 py-2 text-sm whitespace-pre-wrap"
-              style={{ borderLeftColor: hex(value.color) }}
+        {saved.design ? (
+          <div className="space-y-2 rounded-lg border border-accent/40 bg-primary/10 p-3 text-sm">
+            <p>Bu mesaj Embed sekmesindeki tasarımla gönderiliyor.</p>
+            <Link
+              to="/panel/embed"
+              search={{ hedef: kind === "welcome" ? "karsilama" : "ayrilma" }}
+              className={buttonClass}
             >
-              {preview || <span className="text-muted-foreground">(boş)</span>}
+              Tasarımı düzenle
+            </Link>
+          </div>
+        ) : (
+          <>
+            <label className="block space-y-1.5 text-sm">
+              <span className="block text-muted-foreground">Mesaj</span>
+              <textarea
+                value={value.message}
+                onChange={(e) => set({ message: e.target.value })}
+                maxLength={1500}
+                rows={3}
+                className={`${inputClass} h-auto py-2`}
+              />
+              <span className="block text-xs text-muted-foreground">
+                {"{user}"} üyeyi etiketler · {"{name}"} adı · {"{server}"} sunucu adı · {"{count}"}{" "}
+                üye sayısı. @everyone ve roller asla etiketlenmez. Görsel, alan ve butonlu detaylı
+                tasarım için{" "}
+                <Link
+                  to="/panel/embed"
+                  search={{ hedef: kind === "welcome" ? "karsilama" : "ayrilma" }}
+                  className="text-accent hover:underline"
+                >
+                  Embed sekmesi
+                </Link>
+                .
+              </span>
+            </label>
+            <div className="flex flex-wrap items-center gap-4">
+              <Toggle
+                checked={value.embed}
+                onChange={(embed) => set({ embed })}
+                label="Gömülü (embed)"
+              />
+              {value.embed && (
+                <label className="inline-flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground">Renk</span>
+                  <input
+                    type="color"
+                    value={hex(value.color)}
+                    onChange={(e) => set({ color: parseInt(e.target.value.slice(1), 16) })}
+                    className="h-8 w-10 cursor-pointer rounded border border-border bg-transparent"
+                  />
+                </label>
+              )}
             </div>
-          ) : (
-            <p className="text-sm whitespace-pre-wrap">
-              {preview || <span className="text-muted-foreground">(boş)</span>}
-            </p>
-          )}
-        </div>
+            <div>
+              <span className="mb-1.5 block text-xs text-muted-foreground">Görünüm</span>
+              {value.embed ? (
+                <div
+                  className="rounded-md border-l-4 bg-foreground/5 px-3 py-2 text-sm whitespace-pre-wrap"
+                  style={{ borderLeftColor: hex(value.color) }}
+                >
+                  {preview || <span className="text-muted-foreground">(boş)</span>}
+                </div>
+              ) : (
+                <p className="text-sm whitespace-pre-wrap">
+                  {preview || <span className="text-muted-foreground">(boş)</span>}
+                </p>
+              )}
+            </div>
+          </>
+        )}
         <div className="flex flex-wrap items-center gap-3">
           <button
             type="button"
