@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
+import { Lock } from "lucide-react";
 import { api } from "@/panel/api";
 import {
   ActionResult,
@@ -13,6 +14,7 @@ import {
 import { ago, dateTime, roleHex } from "@/panel/format";
 import { useMeta } from "@/panel/hooks";
 import { useLive } from "@/panel/live";
+import { PERMISSIONS, hasBit, toBig, withBit } from "@/panel/permissions";
 import { useSession } from "@/panel/session";
 import { Avatar, Badge, Card, Notice, Toggle, selectClass } from "@/panel/ui";
 
@@ -21,7 +23,8 @@ export const Route = createFileRoute("/panel/koruma")({
 });
 
 interface Protection {
-  guard: { enabled: boolean };
+  // Yasaklı yetkiler: u64 bit maskesi (string).
+  guard: { enabled: boolean; permissions: string };
   bots: { enabled: boolean; allowed: string[] };
   vanity: { enabled: boolean; code: string | null };
   spam: {
@@ -59,6 +62,9 @@ interface Status {
   boost_count: number;
   boost_tier: number;
   boost_notice: { at: number; hours: number | null; counts: number[]; text: string } | null;
+  // Yetki korumasında seçilebilen ve her zaman yasaklı yetkiler (bit maskesi).
+  guard_candidates: string;
+  guard_always: string;
 }
 
 interface ProtectionOut {
@@ -96,27 +102,12 @@ const SEVERITY: Record<string, { label: string; tone: "muted" | "accent" | "dang
   critical: { label: "kritik", tone: "danger" },
 };
 
-const FORBIDDEN_LABELS = [
-  "Yönetici",
-  "Sunucuyu yönet",
-  "Rolleri yönet",
-  "Kanalları yönet",
-  "Webhook'ları yönet",
-  "Üyeleri yasakla",
-  "Üyeleri at",
-  "Zaman aşımı",
-  "Takma adları yönet",
-  "İfadeleri yönet",
-  "Etkinlikleri yönet",
-  "@everyone etiketle",
-];
-
 const SNOWFLAKE = /^\d{15,21}$/;
 
 function normalize(p: Protection): Protection {
   const ids = (list: string[]) => [...new Set(list)].sort();
   return {
-    guard: { enabled: p.guard.enabled },
+    guard: { enabled: p.guard.enabled, permissions: toBig(p.guard.permissions).toString() },
     bots: { enabled: p.bots.enabled, allowed: ids(p.bots.allowed) },
     vanity: { enabled: p.vanity.enabled, code: p.vanity.code?.trim() || null },
     spam: { ...p.spam },
@@ -247,6 +238,22 @@ function ProtectionForm({ data, owner }: { data: ProtectionOut; owner: boolean }
       },
     });
   const channelName = (id: string) => channels.find((c) => c.id === id)?.name ?? id;
+  const always = toBig(status.guard_always);
+  const guardMask = toBig(form.guard.permissions);
+  const candidates = PERMISSIONS.filter((p) => hasBit(toBig(status.guard_candidates), p.bit));
+  // Her zaman yasaklı olanlar (yönetici) başta durur.
+  const guardPerms = [
+    ...candidates.filter((p) => hasBit(always, p.bit)),
+    ...candidates.filter((p) => !hasBit(always, p.bit)),
+  ];
+  const toggleGuardPerm = (bit: number) =>
+    setForm({
+      ...form,
+      guard: {
+        ...form.guard,
+        permissions: withBit(guardMask, bit, !hasBit(guardMask, bit)).toString(),
+      },
+    });
 
   return (
     <div className={`space-y-4 ${owner ? "pb-20" : ""}`}>
@@ -256,19 +263,38 @@ function ProtectionForm({ data, owner }: { data: ProtectionOut; owner: boolean }
             <Toggle
               checked={form.guard.enabled}
               disabled={locked}
-              onChange={(enabled) => setForm({ ...form, guard: { enabled } })}
+              onChange={(enabled) => setForm({ ...form, guard: { ...form.guard, enabled } })}
               label="Açık"
             />
             <p className="text-xs text-muted-foreground">
-              Bu yetkiler bot rolü dışında hiçbir rolde ve kanal izninde duramaz. Görüldüğü anda
-              kaldırılır, yapan kişi owner'lara bildirilir.
+              Seçili yetkiler bot rolü dışında hiçbir rolde ve kanal izninde duramaz. Görüldüğü anda
+              kaldırılır, yapan kişi owner'lara bildirilir; panel de bu yetkileri kimseye vermez.
+              Seçimi kaldırılan yetkiye dokunulmaz. Yönetici her zaman yasaklıdır.
             </p>
             <ul className="flex flex-wrap gap-1.5">
-              {FORBIDDEN_LABELS.map((l) => (
-                <li key={l}>
-                  <Badge>{l}</Badge>
-                </li>
-              ))}
+              {guardPerms.map((p) => {
+                const fixed = hasBit(always, p.bit);
+                const on = fixed || hasBit(guardMask, p.bit);
+                return (
+                  <li key={p.key}>
+                    <button
+                      type="button"
+                      aria-pressed={on}
+                      disabled={locked || fixed}
+                      title={fixed ? "Her zaman yasaklı" : on ? "Yasaklı" : "Serbest"}
+                      onClick={() => toggleGuardPerm(p.bit)}
+                      className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs transition-colors ${
+                        on
+                          ? "border-destructive/60 bg-destructive/15 text-foreground"
+                          : "border-border text-muted-foreground line-through hover:border-accent"
+                      } ${fixed ? "cursor-not-allowed" : ""}`}
+                    >
+                      {fixed && <Lock className="h-3 w-3" aria-hidden="true" />}
+                      {p.label}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
             {owner && (
               <div className="flex flex-wrap items-center gap-3">

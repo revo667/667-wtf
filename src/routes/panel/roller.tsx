@@ -65,8 +65,8 @@ function RolesPage() {
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <p className="text-sm text-muted-foreground">
-          Bot yalnızca kendi rolünün altındaki rolleri yönetebilir. Yönetici yetkileri politika
-          gereği hiçbir role verilemez.
+          Bot yalnızca kendi rolünün altındaki rolleri yönetebilir. Yetki korumasında yasaklı
+          yetkiler hiçbir role verilemez; listeyi Koruma sayfasından owner seçer.
         </p>
         {canEdit && (
           <button
@@ -268,7 +268,7 @@ function RoleEditor({
                     key={p.key}
                     className={`flex items-center gap-2 text-sm ${locked ? "cursor-not-allowed text-muted-foreground/50" : ""}`}
                     title={
-                      locked ? "Politika gereği bu yetki panelden hiçbir role verilemez" : p.key
+                      locked ? "Yetki korumasında yasaklı: panelden hiçbir role verilemez" : p.key
                     }
                   >
                     <input
