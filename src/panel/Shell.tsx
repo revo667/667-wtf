@@ -30,7 +30,8 @@ type NavTo =
   | "/panel/otomasyon"
   | "/panel/koruma"
   | "/panel/yedekler"
-  | "/panel/moderasyon";
+  | "/panel/moderasyon"
+  | "/panel/yonetim";
 // `to` olmayanlar henüz yapılmamış modüller: menüde görünür ama tıklanamaz.
 type NavItem = { label: string; icon: LucideIcon; to?: NavTo };
 
@@ -45,7 +46,7 @@ const NAV: NavItem[] = [
   { label: "Koruma", icon: ShieldCheck, to: "/panel/koruma" },
   { label: "Yedekler", icon: Archive, to: "/panel/yedekler" },
   { label: "Moderasyon", icon: Gavel, to: "/panel/moderasyon" },
-  { label: "Panel", icon: KeyRound },
+  { label: "Panel", icon: KeyRound, to: "/panel/yonetim" },
 ];
 
 const itemClass = "flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors";
