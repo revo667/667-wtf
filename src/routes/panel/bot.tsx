@@ -44,6 +44,8 @@ interface BotInfo {
   default_roles: string[];
   commands: CommandRow[];
   guild_tag: GuildTag;
+  /** Bu rollerdekiler /ban ile banlanamaz; sadece panelden admin/owner. */
+  ban_protected_roles: string[];
   locked: { id: string; name: string; reason: string; at: number }[];
 }
 
@@ -125,7 +127,7 @@ function BotPage() {
   else
     body = (
       <Commands
-        key={JSON.stringify([q.data.default_roles, q.data.commands])}
+        key={JSON.stringify([q.data.default_roles, q.data.commands, q.data.ban_protected_roles])}
         info={q.data}
         isOwner={isOwner}
       />
@@ -348,19 +350,25 @@ function RolePicker({
   onChange,
   roles,
   disabled = false,
+  emptyText,
 }: {
   value: string[];
   onChange: (v: string[]) => void;
   roles: RoleMeta[];
   disabled?: boolean;
+  /** Boşken gösterilecek not; verilmezse "kimse kullanamaz" uyarısı. */
+  emptyText?: string;
 }) {
   const byId = new Map(roles.map((r) => [r.id, r]));
   const rest = roles.filter((r) => !value.includes(r.id));
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      {value.length === 0 && (
-        <span className="text-xs text-destructive">rol seçilmedi: kimse kullanamaz</span>
-      )}
+      {value.length === 0 &&
+        (emptyText ? (
+          <span className="text-xs text-muted-foreground">{emptyText}</span>
+        ) : (
+          <span className="text-xs text-destructive">rol seçilmedi: kimse kullanamaz</span>
+        ))}
       {value.map((id) => {
         const r = byId.get(id);
         return (
@@ -407,6 +415,7 @@ function Commands({ info, isOwner }: { info: BotInfo; isOwner: boolean }) {
   const roles = assignable(meta.data?.roles);
   const [defaults, setDefaults] = useState(info.default_roles);
   const [rows, setRows] = useState(info.commands);
+  const [protectedRoles, setProtectedRoles] = useState(info.ban_protected_roles);
   const set = (name: string, patch: Partial<CommandRow>) =>
     setRows((rs) => rs.map((r) => (r.name === name ? { ...r, ...patch } : r)));
   const save = usePanelAction(
@@ -416,6 +425,7 @@ function Commands({ info, isOwner }: { info: BotInfo; isOwner: boolean }) {
         commands: Object.fromEntries(
           rows.map((r) => [r.name, { enabled: r.enabled, roles: r.roles }]),
         ),
+        ban_protected_roles: protectedRoles,
       }),
     { success: "Komut yetkileri kaydedildi" },
   );
@@ -428,6 +438,19 @@ function Commands({ info, isOwner }: { info: BotInfo; isOwner: boolean }) {
           yöneticiliği muafiyet sağlamaz: rol yoksa kimse kullanamaz.
         </p>
         <RolePicker value={defaults} onChange={setDefaults} roles={roles} disabled={!isOwner} />
+      </Card>
+      <Card title="Sadece panelden banlanabilen roller">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Bu rollerdeki üyeler Discord'da /ban ile banlanamaz; onları sadece panelden admin ya da
+          owner banlayabilir (panelde ban zaten sadece admin ve owner'a açık).
+        </p>
+        <RolePicker
+          value={protectedRoles}
+          onChange={setProtectedRoles}
+          roles={roles}
+          disabled={!isOwner}
+          emptyText="korumalı rol yok: /ban herkese kullanılabilir"
+        />
       </Card>
       <Card title="Komutlar">
         <ul className="divide-y divide-border">
