@@ -87,6 +87,7 @@ const MODULES: Record<string, string> = {
   raid: "Raid",
   quarantine: "Karantina",
   backup: "Yedek",
+  boost: "Takviye",
 };
 
 const SEVERITY: Record<string, { label: string; tone: "muted" | "accent" | "danger" }> = {
@@ -212,9 +213,6 @@ function ProtectionForm({ data, owner }: { data: ProtectionOut; owner: boolean }
   });
   const scan = usePanelAction(() => api<{ fixed: number }>("POST", "/protection/scan"), {
     success: "Tarama bitti",
-  });
-  const vanityTest = usePanelAction(() => api("POST", "/protection/vanity-test"), {
-    success: "Test başarılı: bot davet bağlantısını geri alabiliyor",
   });
   const kick = usePanelAction(
     (id: string) => api("POST", `/members/${id}/kick`, { reason: "İzinsiz bot" }),
@@ -404,52 +402,27 @@ function ProtectionForm({ data, owner }: { data: ProtectionOut; owner: boolean }
               label="Açık"
             />
             <p className="text-xs text-muted-foreground">
-              Bağlantı kilitli koddan farklı bir koda çevrilirse bot hemen geri almaya çalışır;
-              alamazsa owner'lara acil bildirim gider.
+              Biri bağlantıyı değiştirir ya da kaldırırsa bot bunu anında görür ve kilitli koda geri
+              alır; alamazsa owner'lara acil bildirim gider. Bot bağlantıya başka hiçbir durumda
+              dokunmaz. Kilitli kod sunucunun gerçek kodudur, panelden yazılamaz. Bağlantıyı bilerek
+              değiştirmek için korumayı kapat, Discord'dan değiştir ve korumayı yeniden aç: yeni kod
+              kilitlenir.
             </p>
-            <label className="block space-y-1.5 text-sm">
-              <span className="block text-muted-foreground">Kilitli kod</span>
-              <span className="flex items-center gap-1">
-                <span className="text-muted-foreground">discord.gg/</span>
-                <input
-                  value={form.vanity.code ?? ""}
-                  disabled={locked}
-                  onChange={(e) =>
-                    setForm({ ...form, vanity: { ...form.vanity, code: e.target.value } })
-                  }
-                  maxLength={32}
-                  placeholder="ilk görülen kod kilitlenir"
-                  className={`${inputClass} min-w-0 flex-1`}
-                />
-              </span>
-            </label>
+            <p className="text-sm">
+              <span className="text-muted-foreground">Kilitli kod: </span>
+              {saved.vanity.code
+                ? `discord.gg/${saved.vanity.code}`
+                : "yok (sunucunun kodu kilitlenecek)"}
+            </p>
             <p className="text-sm">
               <span className="text-muted-foreground">Şu anki: </span>
               {status.vanity_current ? `discord.gg/${status.vanity_current}` : "yok"}
             </p>
-            {!status.vanity_supported ? (
+            {!status.vanity_supported && (
               <p className="text-xs text-muted-foreground">
                 Bu sunucuda özel davet bağlantısı yok (3. seviye takviye gerekir). Koruma, bağlantı
                 olduğunda devreye girer.
               </p>
-            ) : (
-              owner && (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    disabled={vanityTest.busy}
-                    onClick={() => vanityTest.run(undefined)}
-                    className={buttonClass}
-                  >
-                    Zararsız test
-                  </button>
-                  <p className="text-xs text-muted-foreground">
-                    Bot bağlantıyı aynı koda yeniden ayarlamayı dener. Başarılıysa geri alma da
-                    çalışıyor demektir.
-                  </p>
-                  <ActionResult msg={vanityTest.msg} />
-                </div>
-              )
             )}
           </div>
         </Card>
