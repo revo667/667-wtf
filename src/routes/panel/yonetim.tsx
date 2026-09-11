@@ -3,8 +3,16 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { api } from "@/panel/api";
 import { Accounts, type Account } from "@/panel/Accounts";
-import { ActionResult, ConfirmButton, buttonClass, usePanelAction } from "@/panel/actions";
+import {
+  ActionResult,
+  ConfirmButton,
+  buttonClass,
+  primaryButtonClass,
+  usePanelAction,
+} from "@/panel/actions";
 import { ago, dateTime } from "@/panel/format";
+import { useMeta } from "@/panel/hooks";
+import { RolePicker } from "@/panel/RolePicker";
 import { useSession } from "@/panel/session";
 import { Badge, Card, Notice, selectClass } from "@/panel/ui";
 
@@ -22,6 +30,7 @@ function PanelAdminPage() {
         <Sessions owner={owner} />
         <Levels />
       </div>
+      <Hierarchy owner={owner} />
       {admin && <Accounts owner={owner} me={session.username} />}
       {admin && <Audit owner={owner} />}
     </div>
@@ -163,6 +172,115 @@ function Levels() {
           heroku config:set PANEL_USERS=... -a admin-667-api &gt; /dev/null
         </code>
       </p>
+    </Card>
+  );
+}
+
+interface StaffRoles {
+  owner: string[];
+  admin: string[];
+  mod: string[];
+}
+
+interface StaffInfo {
+  roles: StaffRoles;
+  linked: { username: string; level: string; discord_id: string; name: string }[];
+}
+
+const STAFF_LEVELS: (keyof StaffRoles)[] = ["owner", "admin", "mod"];
+
+/** Yetkili hiyerarşisi: hangi Discord rolü hangi seviyede sayılır. */
+function Hierarchy({ owner }: { owner: boolean }) {
+  const q = useQuery({
+    queryKey: ["panel", "staff-roles"],
+    queryFn: () => api<StaffInfo>("GET", "/staff-roles"),
+  });
+  if (q.error)
+    return (
+      <Card title="Yetkili hiyerarşisi">
+        <Notice error={q.error} />
+      </Card>
+    );
+  if (!q.data) return null;
+  return <HierarchyForm key={JSON.stringify(q.data.roles)} info={q.data} owner={owner} />;
+}
+
+function HierarchyForm({ info, owner }: { info: StaffInfo; owner: boolean }) {
+  const meta = useMeta();
+  const roles = (meta.data?.roles ?? []).filter((r) => !r.managed && r.name !== "@everyone");
+  const [form, setForm] = useState<StaffRoles>(info.roles);
+  const save = usePanelAction(() => api("PUT", "/staff-roles", form), { success: "Kaydedildi" });
+  // Bir rol tek seviyede olur: başka seviyede seçilmiş roller listede çıkmaz.
+  const takenElsewhere = (level: keyof StaffRoles) =>
+    new Set(STAFF_LEVELS.filter((l) => l !== level).flatMap((l) => form[l]));
+
+  return (
+    <Card title="Yetkili hiyerarşisi">
+      <p className="mb-4 text-xs text-muted-foreground">
+        Kimse kendi seviyesindeki ya da üstündeki bir yetkiliye ceza veremez, onu sesten atamaz,
+        rolünü ya da takma adını değiştiremez: mod; mod, admin ve owner'a, admin; admin ve owner'a,
+        owner da başka bir owner'a işlem yapamaz. Panelde ve Discord'daki /ban'de geçerlidir. Bir
+        üyenin seviyesi aşağıdaki rollerden ve Discord ID'si bağlı panel hesabından bulunur (yüksek
+        olan geçerli). Bu roller rol paneli, tepki, /toplurol gibi herkese açık yollardan
+        dağıtılamaz; panelde de kimse kendi seviyesindeki ya da üstündeki yetkili rolünü veremez,
+        alamaz.
+      </p>
+      <div className="space-y-3">
+        {STAFF_LEVELS.map((level) => (
+          <div key={level} className="flex flex-wrap items-start gap-3">
+            <span className="w-16 shrink-0 pt-0.5">
+              <Badge tone={level === "owner" ? "accent" : "muted"}>{level}</Badge>
+            </span>
+            <div className="min-w-0 flex-1">
+              <RolePicker
+                value={form[level]}
+                onChange={(v) => setForm({ ...form, [level]: v })}
+                roles={roles.filter((r) => !takenElsewhere(level).has(r.id))}
+                disabled={!owner}
+                emptyText="rol seçilmedi"
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="mt-5 space-y-1.5">
+        <p className="text-xs font-medium">Discord hesabı bağlı panel hesapları</p>
+        {info.linked.length === 0 ? (
+          <p className="text-xs text-muted-foreground">
+            Yok. Bağlamak için PANEL_USERS girdisine Discord ID ekle:{" "}
+            <code className="font-mono text-foreground/80">
+              kullanıcı:seviye:telegram_chat_id:discord_id
+            </code>
+          </p>
+        ) : (
+          <ul className="space-y-1 text-sm">
+            {info.linked.map((l) => (
+              <li key={l.username} className="flex flex-wrap items-center gap-2">
+                <span className="font-medium">{l.username}</span>
+                <Badge>{l.level}</Badge>
+                <span className="text-xs text-muted-foreground">
+                  {l.name} ({l.discord_id})
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+      {owner ? (
+        <div className="mt-4 flex items-center gap-3">
+          <button
+            type="button"
+            disabled={save.busy}
+            onClick={() => save.run(undefined)}
+            className={primaryButtonClass}
+          >
+            Kaydet
+          </button>
+          <ActionResult msg={save.msg} />
+        </div>
+      ) : (
+        <p className="mt-4 text-xs text-muted-foreground">Sadece owner değiştirebilir.</p>
+      )}
     </Card>
   );
 }
