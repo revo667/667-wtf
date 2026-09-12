@@ -35,7 +35,9 @@ export function Accounts({ owner, me }: { owner: boolean; me: string }) {
         Bir hesap 60 saniyede 5 ban/kick, 3 kanal/rol silme, 5 toplu silme, 10 susturma, 10
         emoji/davet/webhook silme ya da 20 üye düzenleme sınırını aşarsa anında dondurulur ve
         oturumları kapanır. Son 5 dakikadaki yasak ve susturmaları geri alınır, sildiği kanal ve
-        roller yeniden kurulur. Dondurulan hesap giriş yapamaz; sadece owner açabilir.
+        roller yeniden kurulur. Dondurulan hesap giriş yapamaz; sadece owner açabilir. Tek owner
+        donarsa panelden açılamaz: sunucuda <code>admin667 unfreeze &lt;kullanıcı&gt;</code>{" "}
+        çalıştırılır.
       </p>
       {q.error ? (
         <Notice error={q.error} />
