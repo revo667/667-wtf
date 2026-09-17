@@ -13,6 +13,10 @@ import {
 } from "@/panel/actions";
 import { BotProfile } from "@/panel/BotProfile";
 import { Drawer } from "@/panel/Drawer";
+import { BlocksEditor } from "@/panel/embed/BlocksEditor";
+import { ClassicEditor } from "@/panel/embed/ClassicEditor";
+import { emptyDoc, newEmbed, normalize, type Doc } from "@/panel/embed/doc";
+import { MessagePreview } from "@/panel/embed/Preview";
 import { dateTime, roleHex } from "@/panel/format";
 import { useMeta } from "@/panel/hooks";
 import { RolePicker } from "@/panel/RolePicker";
@@ -66,6 +70,8 @@ interface RolePanel {
   description: string;
   color: number;
   buttons: PanelButton[];
+  /** Embed sekmesinin tam tasarımı; yoksa title/description/color'dan basit embed gider. */
+  design: Doc | null;
   created_by: string;
   created_at: number;
   updated_at: number;
@@ -102,8 +108,6 @@ const TABS: { value: Tab; label: string }[] = [
 /** Panelden/komuttan verilebilen roller: @everyone ve entegrasyon rolleri hariç. */
 const assignable = (roles: RoleMeta[] | undefined) =>
   (roles ?? []).filter((r) => !r.managed && r.name !== "@everyone");
-
-const hex = (n: number) => `#${(n & 0xffffff).toString(16).padStart(6, "0")}`;
 
 const smallButton =
   "rounded-md px-2 py-1 text-xs text-muted-foreground hover:bg-background/60 hover:text-foreground";
@@ -475,35 +479,16 @@ function EmojiView({ raw }: { raw: string }) {
   );
 }
 
-function PanelPreview({
-  title,
-  description,
-  color,
-  buttons,
-}: {
-  title: string;
-  description: string;
-  color: string;
-  buttons: PanelButton[];
-}) {
+/** Panelin rol butonları (mesaj tasarımının altında görünür, 5'erli satırlar). */
+function RoleButtonsPreview({ buttons }: { buttons: PanelButton[] }) {
+  if (buttons.length === 0)
+    return <p className="text-xs text-muted-foreground italic">Henüz rol butonu yok.</p>;
   const rows: PanelButton[][] = [];
   for (let i = 0; i < buttons.length; i += 5) rows.push(buttons.slice(i, i + 5));
   return (
-    <div className="rounded-xl border border-border bg-[#1e1f22] p-4 text-sm text-[#dbdee1]">
-      <div
-        className="max-w-md rounded border-l-4 bg-[#2b2d31] p-3"
-        style={{ borderLeftColor: color }}
-      >
-        {title.trim() && <p className="font-semibold text-white">{title}</p>}
-        {description.trim() && (
-          <p className="mt-1 break-words whitespace-pre-wrap">{description}</p>
-        )}
-        {!title.trim() && !description.trim() && (
-          <p className="text-[#949ba4] italic">başlık ya da açıklama yaz</p>
-        )}
-      </div>
+    <div className="space-y-2">
       {rows.map((row, i) => (
-        <div key={i} className="mt-2 flex max-w-md flex-wrap gap-2">
+        <div key={i} className="flex max-w-md flex-wrap gap-2">
           {row.map((b) => (
             <span
               key={b.role_id}
@@ -596,25 +581,37 @@ function RolePanels() {
   );
 }
 
+/** Tasarım yoksa eski title/description/color'dan tek embed'li bir tasarım kurulur. */
+function seedDesign(panel: RolePanel | null): Doc {
+  if (panel?.design) return normalize(panel.design);
+  const doc = emptyDoc();
+  doc.embeds = [
+    {
+      ...newEmbed(),
+      title: panel?.title ?? "",
+      description: panel?.description ?? "",
+      color: panel?.color ?? 0x5b2c6f,
+    },
+  ];
+  return doc;
+}
+
 function PanelEditor({ panel, onDone }: { panel: RolePanel | null; onDone: () => void }) {
   const meta = useMeta();
+  const botQ = useQuery({
+    queryKey: ["panel", "bot"],
+    queryFn: () => api<{ user: { name: string; avatar: string } }>("GET", "/bot"),
+  });
+  const bot = { name: botQ.data?.user.name ?? "bot", avatar: botQ.data?.user.avatar ?? null };
   const channels = (meta.data?.channels ?? []).filter((c) => MESSAGE_KINDS.includes(c.kind));
   const allRoles = meta.data?.roles ?? [];
   const roles = assignable(allRoles);
   const roleById = new Map(allRoles.map((r) => [r.id, r]));
   const [channel, setChannel] = useState(panel?.channel_id ?? "");
-  const [title, setTitle] = useState(panel?.title ?? "");
-  const [description, setDescription] = useState(panel?.description ?? "");
-  const [color, setColor] = useState(hex(panel?.color ?? 0x5b2c6f));
+  const [design, setDesign] = useState<Doc>(() => seedDesign(panel));
   const [buttons, setButtons] = useState<PanelButton[]>(panel?.buttons ?? []);
 
-  const body = () => ({
-    channel_id: channel,
-    title,
-    description,
-    color: parseInt(color.slice(1), 16),
-    buttons,
-  });
+  const body = () => ({ channel_id: channel, design, buttons });
   const save = usePanelAction(
     () =>
       panel
@@ -641,7 +638,26 @@ function PanelEditor({ panel, onDone }: { panel: RolePanel | null; onDone: () =>
     });
   const used = new Set(buttons.map((b) => b.role_id));
   const addable = roles.filter((r) => !used.has(r.id));
-  const ready = channel && buttons.length > 0 && (title.trim() || description.trim());
+  const designFilled =
+    design.content.trim() !== "" ||
+    (design.mode === "embed"
+      ? design.embeds.some(
+          (e) =>
+            e.title.trim() ||
+            e.description.trim() ||
+            e.author_name.trim() ||
+            e.thumbnail.trim() ||
+            e.image.trim() ||
+            e.fields.length > 0,
+        )
+      : design.blocks.some((b) =>
+          b.kind === "text"
+            ? b.text.trim() !== "" || !!b.image?.url.trim()
+            : b.kind === "gallery"
+              ? b.items.some((m) => m.url.trim() !== "")
+              : false,
+        ));
+  const ready = !!channel && buttons.length > 0 && designFilled;
 
   return (
     <div className="space-y-5">
@@ -659,30 +675,20 @@ function PanelEditor({ panel, onDone }: { panel: RolePanel | null; onDone: () =>
             </option>
           ))}
         </select>
-        <div className="flex gap-2">
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            maxLength={256}
-            placeholder="başlık"
-            className={inputClass}
-          />
-          <input
-            type="color"
-            value={color}
-            onChange={(e) => setColor(e.target.value)}
-            aria-label="Renk"
-            className="h-9 w-10 shrink-0 cursor-pointer rounded border border-border bg-transparent"
-          />
-        </div>
-        <textarea
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          maxLength={4096}
-          rows={4}
-          placeholder="açıklama"
-          className={`${inputClass} h-auto py-2`}
+        <Segmented
+          value={design.mode}
+          options={[
+            { value: "embed", label: "Klasik embed" },
+            { value: "blocks", label: "Blok düzeni" },
+          ]}
+          onChange={(mode) => setDesign({ ...design, mode })}
+          label="Mesaj biçimi"
         />
+        {design.mode === "embed" ? (
+          <ClassicEditor doc={design} onChange={setDesign} vars={false} noButtons />
+        ) : (
+          <BlocksEditor doc={design} onChange={setDesign} vars={false} noButtons />
+        )}
       </section>
 
       <section className="space-y-2">
@@ -787,7 +793,8 @@ function PanelEditor({ panel, onDone }: { panel: RolePanel | null; onDone: () =>
 
       <section className="space-y-2">
         <p className="text-xs text-muted-foreground">Önizleme</p>
-        <PanelPreview title={title} description={description} color={color} buttons={buttons} />
+        <MessagePreview doc={design} meta={meta.data} bot={bot} />
+        <RoleButtonsPreview buttons={buttons} />
       </section>
 
       <div className="flex flex-wrap items-center gap-3">

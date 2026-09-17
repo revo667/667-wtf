@@ -37,14 +37,18 @@ export function BlocksEditor({
   doc,
   onChange,
   vars,
+  noButtons = false,
 }: {
   doc: Doc;
   onChange: (d: Doc) => void;
   vars: boolean;
+  /** Rol panelinde butonlar rollerdir; buton bloğu eklenemez. */
+  noButtons?: boolean;
 }) {
   const stats = blockStats(doc);
   const setBlocks = (blocks: Block[]) => onChange({ ...doc, blocks });
   const over = stats.components > LIMITS.components || stats.text > LIMITS.blockText;
+  const kinds = noButtons ? KINDS.filter((k) => k.kind !== "buttons") : KINDS;
 
   return (
     <>
@@ -109,7 +113,7 @@ export function BlocksEditor({
           ))}
           {doc.blocks.length === 0 && <p className={hintClass}>Henüz blok yok.</p>}
           <div className="flex flex-wrap gap-2 pt-1">
-            {KINDS.map((k) => (
+            {kinds.map((k) => (
               <button
                 key={k.kind}
                 type="button"

@@ -20,10 +20,13 @@ export function ClassicEditor({
   doc,
   onChange,
   vars,
+  noButtons = false,
 }: {
   doc: Doc;
   onChange: (d: Doc) => void;
   vars: boolean;
+  /** Rol panelinde butonlar rollerdir; bağlantı butonu kartı gizlenir. */
+  noButtons?: boolean;
 }) {
   const [active, setActive] = useState(0);
   const idx = Math.max(0, Math.min(active, doc.embeds.length - 1));
@@ -127,14 +130,16 @@ export function ClassicEditor({
         )}
       </Card>
 
-      <Card title="Bağlantı butonları">
-        <ButtonsEditor
-          buttons={doc.buttons}
-          onChange={(buttons) => onChange({ ...doc, buttons })}
-          max={LIMITS.buttons}
-          vars={vars}
-        />
-      </Card>
+      {!noButtons && (
+        <Card title="Bağlantı butonları">
+          <ButtonsEditor
+            buttons={doc.buttons}
+            onChange={(buttons) => onChange({ ...doc, buttons })}
+            max={LIMITS.buttons}
+            vars={vars}
+          />
+        </Card>
+      )}
     </>
   );
 }
