@@ -47,6 +47,8 @@ interface BotInfo {
   user: { id: string; name: string; avatar: string };
   ready: boolean;
   voice: { channel_id: string; name: string | null } | null;
+  /** "Hep seste kal" kanalı; null: kapalı */
+  voice_stay: string | null;
   default_roles: string[];
   commands: CommandRow[];
   guild_tag: GuildTag;
@@ -162,6 +164,15 @@ function General({ info, isOwner }: { info: BotInfo; isOwner: boolean }) {
     success: "Bot sese girdi",
   });
   const leave = usePanelAction(() => api("DELETE", "/bot/voice"), { success: "Bot sesten çıktı" });
+  const stay = usePanelAction(
+    (channelId: string | null) => api("PUT", "/bot/voice/stay", { channel_id: channelId }),
+    { success: "Kaydedildi" },
+  );
+  // Açarken seçili kanal, seçim yoksa botun şu an bulunduğu kanal tutulur.
+  const stayTarget = channel || info.voice?.channel_id || "";
+  const stayName = info.voice_stay
+    ? (voiceChannels.find((c) => c.id === info.voice_stay)?.name ?? info.voice_stay)
+    : null;
 
   return (
     <div className="grid gap-4 lg:grid-cols-2">
@@ -217,7 +228,24 @@ function General({ info, isOwner }: { info: BotInfo; isOwner: boolean }) {
               </button>
             )}
           </div>
-          <ActionResult msg={join.msg ?? leave.msg} />
+          <Toggle
+            checked={info.voice_stay !== null}
+            disabled={stay.busy || (info.voice_stay === null && !stayTarget)}
+            onChange={(on) => stay.run(on ? stayTarget : null)}
+            label="Bot açıkken hep seste kalsın"
+          />
+          {stayName ? (
+            <p className="text-xs text-muted-foreground">
+              Bot <span className="text-foreground">#{stayName}</span> kanalında tutuluyor: açılışta
+              girer; atılır, taşınır ya da bağlantısı düşerse birkaç saniye içinde geri döner. Sese
+              sokmak kanalı değiştirir, sesten çıkarmak (/leave dahil) bunu kapatır.
+            </p>
+          ) : (
+            !stayTarget && (
+              <p className="text-xs text-muted-foreground">Açmak için önce bir ses kanalı seç.</p>
+            )
+          )}
+          <ActionResult msg={join.msg ?? leave.msg ?? stay.msg} />
           <p className="text-xs text-muted-foreground">
             Bot seste sadece durur, ses çalmaz. Discord'dan /join ve /leave ile de yapılır.
           </p>
@@ -897,7 +925,28 @@ function ReactionItem({
 // ---------------------------------------------------------------------------------------------
 // Terminal logu
 
-const MAX_LINES = 2000;
+interface LogRun {
+  run: number;
+  started_at: number;
+  last_at: number;
+  lines: number;
+  /** Kapanış satırı yazıldı mı? Yazılmadıysa süreç çöktü ya da öldürüldü. */
+  clean_exit: boolean;
+  current: boolean;
+}
+
+interface LogPage {
+  run: number;
+  current_run: number;
+  lines: LogLine[];
+  more_before: boolean;
+}
+
+type RunLine = LogLine & { run: number };
+
+/** Ekranda tutulan en çok satır */
+const MAX_LINES = 10000;
+const PAGE = 2000;
 
 const LEVEL_TONE: Record<string, string> = {
   error: "text-destructive",
@@ -912,57 +961,210 @@ const timeFmt = new Intl.DateTimeFormat("tr-TR", {
   second: "2-digit",
 });
 
+const runFmt = new Intl.DateTimeFormat("tr-TR", {
+  timeZone: "Europe/Istanbul",
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 type LevelFilter = "all" | "warn" | "error";
+type LinkState = "connecting" | "live" | "polling" | "closed" | "archive";
+
+const byRunSeq = (a: RunLine, b: RunLine) => a.run - b.run || a.seq - b.seq;
+
+function runLabel(r: LogRun): string {
+  if (r.current) return `Şu anki çalışma · ${runFmt.format(r.started_at)}'den beri`;
+  const end = r.clean_exit ? "düzgün kapandı" : "beklenmedik şekilde bitti";
+  return `${runFmt.format(r.started_at)} → ${runFmt.format(r.last_at)} · ${r.lines} satır · ${end}`;
+}
 
 function Terminal() {
-  const [lines, setLines] = useState<LogLine[]>([]);
-  const [state, setState] = useState<"connecting" | "live" | "closed">("connecting");
+  const [runs, setRuns] = useState<LogRun[]>([]);
+  /** null: şu anki çalışma (canlı) */
+  const [selected, setSelected] = useState<number | null>(null);
+  const [lines, setLines] = useState<RunLine[]>([]);
+  const [moreBefore, setMoreBefore] = useState(false);
+  const [link, setLink] = useState<LinkState>("connecting");
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [level, setLevel] = useState<LevelFilter>("all");
   const [search, setSearch] = useState("");
   const [follow, setFollow] = useState(true);
   const box = useRef<HTMLDivElement>(null);
+  /** Ekrandaki en eski çalışmanın kimliği ("daha eski satırlar" onun için yüklenir) */
+  const firstRun = useRef<number | null>(null);
 
-  // Önce akış açılır, sonra son satırlar çekilir; ikisi sıra numarasına göre birleşir, arada satır kaçmaz.
+  const loadRuns = useCallback(() => {
+    api<{ runs: LogRun[] }>("GET", "/bot/logs/runs", undefined, { background: true })
+      .then((r) => setRuns(r.runs))
+      .catch(() => {});
+  }, []);
+
+  const merge = useCallback((run: number, incoming: LogLine[]) => {
+    if (incoming.length === 0) return;
+    setLines((prev) => {
+      const byKey = new Map(prev.map((l) => [`${l.run}:${l.seq}`, l]));
+      for (const l of incoming) byKey.set(`${run}:${l.seq}`, { ...l, run });
+      return [...byKey.values()].sort(byRunSeq).slice(-MAX_LINES);
+    });
+  }, []);
+
+  useEffect(loadRuns, [loadRuns]);
+
+  // Geçmiş bir çalışma: bir kez yüklenir.
   useEffect(() => {
+    if (selected === null) return;
+    let alive = true;
+    setLines([]);
+    setMoreBefore(false);
+    setLink("archive");
+    firstRun.current = selected;
+    api<LogPage>("GET", `/bot/logs?run=${selected}&limit=${PAGE}`, undefined, { background: true })
+      .then((r) => {
+        if (!alive) return;
+        merge(selected, r.lines);
+        setMoreBefore(r.more_before);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [selected, merge]);
+
+  // Şu anki çalışma: canlı akış. Akış açılamazsa (aradaki bir vekil tamponluyorsa) 2,5 sn'de bir
+  // yeni satırlar sorgulanır. Bot yeniden başlarsa eski çalışmanın son satırları tamamlanır, ekran
+  // ayraçla yeni çalışmaya devam eder.
+  useEffect(() => {
+    if (selected !== null) return;
     const ctrl = new AbortController();
     let alive = true;
-    const merge = (incoming: LogLine[]) =>
-      setLines((prev) => {
-        const bySeq = new Map(prev.map((l) => [l.seq, l]));
-        for (const l of incoming) bySeq.set(l.seq, l);
-        return [...bySeq.values()].sort((a, b) => a.seq - b.seq).slice(-MAX_LINES);
-      });
+    let run: number | null = null;
+    let lastSeq = 0;
+    let streaming = false;
+    let busy = false;
+    let again = false;
+    setLines([]);
+    setMoreBefore(false);
+    setLink("connecting");
+    firstRun.current = null;
+
+    const take = (r: number, page: LogLine[]) => {
+      merge(r, page);
+      for (const l of page) if (r === run && l.seq > lastSeq) lastSeq = l.seq;
+    };
+
+    const get = (query: string) =>
+      api<LogPage>("GET", `/bot/logs?${query}`, undefined, { background: true });
+
+    /** Yeni çalışmaya geç: öncekinin kalan satırlarını al, yenisinin son satırlarını yükle. */
+    const switchTo = async (next: number) => {
+      const old = run;
+      const oldLast = lastSeq;
+      run = next;
+      lastSeq = 0;
+      if (old !== null) {
+        const rest = await get(`run=${old}&after=${oldLast}&limit=5000`);
+        merge(old, rest.lines);
+      }
+      const page = await get(`run=${next}&limit=${PAGE}`);
+      if (firstRun.current === null) {
+        firstRun.current = next;
+        setMoreBefore(page.more_before);
+      }
+      take(next, page.lines);
+      loadRuns();
+    };
+
+    /** Bilinen son satırdan sonrasını çeker (akış yokken ya da akış yeniden açılınca aradaki boşluk). */
+    const catchUp = async () => {
+      if (!alive) return;
+      // Sürerken gelen istek kaybolmasın (akış açılırken aradaki satırlar): bitince bir tur daha.
+      if (busy) {
+        again = true;
+        return;
+      }
+      busy = true;
+      try {
+        if (run === null) {
+          const page = await get(`limit=1`);
+          await switchTo(page.current_run);
+        } else {
+          const page = await get(`run=${run}&after=${lastSeq}&limit=5000`);
+          take(run, page.lines);
+          if (page.current_run !== run) await switchTo(page.current_run);
+        }
+        if (!streaming && alive) setLink("polling");
+      } catch {
+        if (!streaming && alive) setLink("closed");
+      } finally {
+        busy = false;
+        if (again) {
+          again = false;
+          void catchUp();
+        }
+      }
+    };
+
+    void catchUp();
+    const poller = setInterval(() => {
+      if (!streaming) void catchUp();
+    }, 2500);
+
     void (async () => {
       while (alive) {
         try {
-          await streamSse<LogLine>(
+          await streamSse<LogLine | { type: "hello"; run: number; seq: number }>(
             "/bot/logs/stream",
             (ev) => {
-              if (ev && typeof ev === "object" && "seq" in ev) merge([ev]);
+              if (!ev || typeof ev !== "object") return;
+              if ("type" in ev) {
+                streaming = true;
+                setLink("live");
+                if (ev.run !== run || ev.seq > lastSeq) void catchUp();
+                return;
+              }
+              if ("seq" in ev && run !== null) take(run, [ev]);
             },
             ctrl.signal,
-            () => {
-              setState("live");
-              api<{ lines: LogLine[] }>("GET", "/bot/logs?limit=500", undefined, {
-                background: true,
-              })
-                .then((r) => merge(r.lines))
-                .catch(() => {});
-            },
+            () => {},
           );
         } catch {
           // Ağ hatası: birazdan yeniden denenir.
         }
+        streaming = false;
         if (!alive) break;
-        setState("closed");
+        setLink("closed");
         await new Promise((r) => setTimeout(r, 3000));
       }
     })();
+
     return () => {
       alive = false;
+      clearInterval(poller);
       ctrl.abort();
     };
-  }, []);
+  }, [selected, merge, loadRuns]);
+
+  const loadOlder = async () => {
+    const run = firstRun.current;
+    const oldest = lines.find((l) => l.run === run);
+    if (run === null || !oldest) return;
+    setFollow(false);
+    setLoadingOlder(true);
+    try {
+      const r = await api<LogPage>(
+        "GET",
+        `/bot/logs?run=${run}&before=${oldest.seq}&limit=${PAGE}`,
+      );
+      merge(run, r.lines);
+      setMoreBefore(r.more_before);
+    } catch {
+      // Sonraki denemede tekrar
+    } finally {
+      setLoadingOlder(false);
+    }
+  };
 
   const needle = search.trim().toLowerCase();
   const shown = lines.filter(
@@ -980,20 +1182,52 @@ function Terminal() {
     if (el && follow && el.scrollHeight - el.scrollTop - el.clientHeight > 40) setFollow(false);
   };
 
+  const download = () => {
+    const text = shown
+      .map(
+        (l) =>
+          `${new Date(l.at).toISOString()} ${l.level.toUpperCase().padEnd(5)} ${l.target}: ${l.text}`,
+      )
+      .join("\n");
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `667-bot-log-${firstRun.current ?? "canli"}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const linkText: Record<LinkState, string> = {
+    connecting: "bağlanıyor…",
+    live: "canlı",
+    polling: "canlı (2,5 sn'de bir yenileniyor)",
+    closed: "bağlantı koptu, yeniden deneniyor…",
+    archive: "kayıt",
+  };
+
   return (
     <Card
       title="Terminal logu"
-      action={
-        <span className="text-xs text-muted-foreground">
-          {state === "live"
-            ? "canlı"
-            : state === "connecting"
-              ? "bağlanıyor…"
-              : "bağlantı koptu, yeniden deneniyor…"}
-        </span>
-      }
+      action={<span className="text-xs text-muted-foreground">{linkText[link]}</span>}
     >
       <div className="mb-3 flex flex-wrap items-center gap-3">
+        <select
+          aria-label="Çalışma"
+          value={selected ?? ""}
+          onChange={(e) => {
+            setFollow(true);
+            setSelected(e.target.value ? Number(e.target.value) : null);
+            loadRuns();
+          }}
+          className={`${selectClass} max-w-full`}
+        >
+          {runs.length === 0 && <option value="">Şu anki çalışma</option>}
+          {runs.map((r) => (
+            <option key={r.run} value={r.current ? "" : r.run}>
+              {runLabel(r)}
+            </option>
+          ))}
+        </select>
         <Segmented
           value={level}
           onChange={setLevel}
@@ -1012,6 +1246,14 @@ function Terminal() {
           className={`${inputClass} max-w-56`}
         />
         <Toggle checked={follow} onChange={setFollow} label="en alta kaydır" />
+        <button
+          type="button"
+          onClick={download}
+          disabled={shown.length === 0}
+          className={smallButton}
+        >
+          indir
+        </button>
         <span className="ml-auto text-xs text-muted-foreground">
           {shown.length} / {lines.length} satır
         </span>
@@ -1021,24 +1263,42 @@ function Terminal() {
         onScroll={onScroll}
         className="h-[60vh] overflow-auto rounded-lg border border-border bg-black/60 p-3 font-mono text-[11px] leading-relaxed"
       >
+        {moreBefore && (
+          <button
+            type="button"
+            onClick={() => void loadOlder()}
+            disabled={loadingOlder}
+            className={`${smallButton} mb-2`}
+          >
+            {loadingOlder ? "yükleniyor…" : "daha eski satırları yükle"}
+          </button>
+        )}
         {shown.length === 0 ? (
           <p className="text-muted-foreground">Kayıt yok</p>
         ) : (
-          shown.map((l) => (
-            <div key={l.seq} className="break-all whitespace-pre-wrap">
-              <span className="text-muted-foreground">{timeFmt.format(l.at)} </span>
-              <span className={`uppercase ${LEVEL_TONE[l.level] ?? "text-muted-foreground"}`}>
-                {l.level.padEnd(5)}{" "}
-              </span>
-              <span className="text-muted-foreground/70">{l.target}: </span>
-              <span>{l.text}</span>
+          shown.map((l, i) => (
+            <div key={`${l.run}:${l.seq}`}>
+              {i > 0 && shown[i - 1]?.run !== l.run && (
+                <div className="my-2 border-t border-border pt-2 text-muted-foreground">
+                  ── bot yeniden başladı ({runFmt.format(l.run)}) ──
+                </div>
+              )}
+              <div className="break-all whitespace-pre-wrap">
+                <span className="text-muted-foreground">{timeFmt.format(l.at)} </span>
+                <span className={`uppercase ${LEVEL_TONE[l.level] ?? "text-muted-foreground"}`}>
+                  {l.level.padEnd(5)}{" "}
+                </span>
+                <span className="text-muted-foreground/70">{l.target}: </span>
+                <span>{l.text}</span>
+              </div>
             </div>
           ))
         )}
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        Son 2000 satır tutulur; bot yeniden başlayınca liste sıfırlanır. Heroku'nun kendi
-        yönlendirici logları burada yok.
+        Botun açılışından kapanışına kadar her satır kaydedilir: açılış adımları, Discord olayları
+        (mesaj, üye, ses), komutlar, panel işlemleri ve API istekleri, uyarılar, hatalar ve kapanış.
+        Önceki çalışmalar 14 gün saklanır. Heroku'nun kendi yönlendirici logları burada yok.
       </p>
     </Card>
   );
