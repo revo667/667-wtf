@@ -35,9 +35,9 @@ const DISCORD_CARDS = [
     profile: "https://discord.com/users/275774468658298883",
   },
   {
-    name: "esah667",
-    url: "https://dsc-readme.tsuni.dev/api/user/697131524016832533?theme=custom&colorB1=000000&colorB2=000000&colorB3=000000&colorT1=471675&colorT2=FFFFFF&width=315&font=vampyre&nameColor1=471675",
-    profile: "https://discord.com/users/697131524016832533",
+    name: "hystericdisaster",
+    url: "https://dsc-readme.tsuni.dev/api/user/292009962778132491?theme=custom&colorB1=000000&colorB2=000000&colorB3=000000&colorT1=471675&colorT2=FFFFFF&width=315&font=vampyre&nameColor1=471675",
+    profile: "https://discord.com/users/292009962778132491",
   },
   {
     name: "elwin667",
