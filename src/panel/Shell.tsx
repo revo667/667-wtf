@@ -2,6 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { Link } from "@tanstack/react-router";
 import {
   Archive,
+  BarChart3,
   Bot,
   Gavel,
   Hash,
@@ -25,6 +26,7 @@ import { SessionContext } from "./session";
 type NavTo =
   | "/panel"
   | "/panel/uyeler"
+  | "/panel/analiz"
   | "/panel/mesajlar"
   | "/panel/embed"
   | "/panel/roller"
@@ -42,6 +44,7 @@ type NavItem = { label: string; icon: LucideIcon; to?: NavTo };
 const NAV: NavItem[] = [
   { label: "Genel Bakış", icon: LayoutDashboard, to: "/panel" },
   { label: "Üyeler", icon: Users, to: "/panel/uyeler" },
+  { label: "Analiz", icon: BarChart3, to: "/panel/analiz" },
   { label: "Mesajlar", icon: MessagesSquare, to: "/panel/mesajlar" },
   { label: "Embed", icon: LayoutTemplate, to: "/panel/embed" },
   { label: "Roller", icon: Shield, to: "/panel/roller" },

@@ -74,6 +74,22 @@ export interface StatsOut {
   top_voice: TopRow[];
 }
 
+export interface UserStatRow {
+  id: string;
+  name: string;
+  avatar: string | null;
+  bot: boolean;
+  messages: number;
+  voice_seconds: number;
+  last_active_at: number | null;
+}
+
+export interface UserStatsOut {
+  total: number;
+  totals: { messages: number; voice_seconds: number; active_users: number };
+  items: UserStatRow[];
+}
+
 export interface MemberRow {
   id: string;
   username: string;

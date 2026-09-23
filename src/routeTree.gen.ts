@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PanelRouteImport } from './routes/panel'
 import { Route as PanelIndexRouteImport } from './routes/panel/index'
+import { Route as PanelAnalizRouteImport } from './routes/panel/analiz'
 import { Route as PanelBotRouteImport } from './routes/panel/bot'
 import { Route as PanelEmbedRouteImport } from './routes/panel/embed'
 import { Route as PanelKanallarRouteImport } from './routes/panel/kanallar'
@@ -38,6 +39,11 @@ const PanelRoute = PanelRouteImport.update({
 const PanelIndexRoute = PanelIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => PanelRoute,
+} as any)
+const PanelAnalizRoute = PanelAnalizRouteImport.update({
+  id: '/analiz',
+  path: '/analiz',
   getParentRoute: () => PanelRoute,
 } as any)
 const PanelBotRoute = PanelBotRouteImport.update({
@@ -104,6 +110,7 @@ const PanelYonetimRoute = PanelYonetimRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/panel': typeof PanelRouteWithChildren
+  '/panel/analiz': typeof PanelAnalizRoute
   '/panel/bot': typeof PanelBotRoute
   '/panel/embed': typeof PanelEmbedRoute
   '/panel/kanallar': typeof PanelKanallarRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/panel/analiz': typeof PanelAnalizRoute
   '/panel/bot': typeof PanelBotRoute
   '/panel/embed': typeof PanelEmbedRoute
   '/panel/kanallar': typeof PanelKanallarRoute
@@ -138,6 +146,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/panel': typeof PanelRouteWithChildren
+  '/panel/analiz': typeof PanelAnalizRoute
   '/panel/bot': typeof PanelBotRoute
   '/panel/embed': typeof PanelEmbedRoute
   '/panel/kanallar': typeof PanelKanallarRoute
@@ -157,6 +166,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/panel'
+    | '/panel/analiz'
     | '/panel/bot'
     | '/panel/embed'
     | '/panel/kanallar'
@@ -173,6 +183,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/panel/analiz'
     | '/panel/bot'
     | '/panel/embed'
     | '/panel/kanallar'
@@ -190,6 +201,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/panel'
+    | '/panel/analiz'
     | '/panel/bot'
     | '/panel/embed'
     | '/panel/kanallar'
@@ -231,6 +243,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/panel/'
       preLoaderRoute: typeof PanelIndexRouteImport
+      parentRoute: typeof PanelRoute
+    }
+    '/panel/analiz': {
+      id: '/panel/analiz'
+      path: '/analiz'
+      fullPath: '/panel/analiz'
+      preLoaderRoute: typeof PanelAnalizRouteImport
       parentRoute: typeof PanelRoute
     }
     '/panel/bot': {
@@ -321,6 +340,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface PanelRouteChildren {
+  PanelAnalizRoute: typeof PanelAnalizRoute
   PanelBotRoute: typeof PanelBotRoute
   PanelEmbedRoute: typeof PanelEmbedRoute
   PanelKanallarRoute: typeof PanelKanallarRoute
@@ -337,6 +357,7 @@ interface PanelRouteChildren {
 }
 
 const PanelRouteChildren: PanelRouteChildren = {
+  PanelAnalizRoute: PanelAnalizRoute,
   PanelBotRoute: PanelBotRoute,
   PanelEmbedRoute: PanelEmbedRoute,
   PanelKanallarRoute: PanelKanallarRoute,
