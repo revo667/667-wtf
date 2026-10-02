@@ -39,23 +39,24 @@ type NavTo =
   | "/panel/moderasyon"
   | "/panel/yonetim";
 // `to` olmayanlar henüz yapılmamış modüller: menüde görünür ama tıklanamaz.
-type NavItem = { label: string; icon: LucideIcon; to?: NavTo };
+// `admin`: modlara menüde gösterilmez; yetki kontrolü yine backend'de.
+type NavItem = { label: string; icon: LucideIcon; to?: NavTo; admin?: boolean };
 
 const NAV: NavItem[] = [
   { label: "Genel Bakış", icon: LayoutDashboard, to: "/panel" },
   { label: "Üyeler", icon: Users, to: "/panel/uyeler" },
   { label: "Analiz", icon: BarChart3, to: "/panel/analiz" },
   { label: "Mesajlar", icon: MessagesSquare, to: "/panel/mesajlar" },
-  { label: "Embed", icon: LayoutTemplate, to: "/panel/embed" },
+  { label: "Embed", icon: LayoutTemplate, to: "/panel/embed", admin: true },
   { label: "Roller", icon: Shield, to: "/panel/roller" },
-  { label: "Kanallar", icon: Hash, to: "/panel/kanallar" },
-  { label: "Sunucu", icon: Server, to: "/panel/sunucu" },
-  { label: "Otomasyon", icon: Workflow, to: "/panel/otomasyon" },
-  { label: "Koruma", icon: ShieldCheck, to: "/panel/koruma" },
-  { label: "Yedekler", icon: Archive, to: "/panel/yedekler" },
-  { label: "Bot", icon: Bot, to: "/panel/bot" },
+  { label: "Kanallar", icon: Hash, to: "/panel/kanallar", admin: true },
+  { label: "Sunucu", icon: Server, to: "/panel/sunucu", admin: true },
+  { label: "Otomasyon", icon: Workflow, to: "/panel/otomasyon", admin: true },
+  { label: "Koruma", icon: ShieldCheck, to: "/panel/koruma", admin: true },
+  { label: "Yedekler", icon: Archive, to: "/panel/yedekler", admin: true },
+  { label: "Bot", icon: Bot, to: "/panel/bot", admin: true },
   { label: "Moderasyon", icon: Gavel, to: "/panel/moderasyon" },
-  { label: "Panel", icon: KeyRound, to: "/panel/yonetim" },
+  { label: "Panel", icon: KeyRound, to: "/panel/yonetim", admin: true },
 ];
 
 const itemClass = "flex shrink-0 items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors";
@@ -108,6 +109,7 @@ export function Shell({
   children: ReactNode;
 }) {
   const [now, setNow] = useState(() => Date.now());
+  const nav = session.level === "mod" ? NAV.filter((item) => !item.admin) : NAV;
 
   useEffect(() => {
     const t = window.setInterval(() => setNow(Date.now()), 1000);
@@ -142,7 +144,7 @@ export function Shell({
               </p>
             </div>
             <nav className="mt-8 flex flex-col gap-1">
-              {NAV.map((item) => (
+              {nav.map((item) => (
                 <NavEntry key={item.label} item={item} />
               ))}
             </nav>
@@ -177,7 +179,7 @@ export function Shell({
             </header>
 
             <nav className="flex gap-1 overflow-x-auto border-b border-border px-4 py-2 md:hidden">
-              {NAV.map((item) => (
+              {nav.map((item) => (
                 <NavEntry key={item.label} item={item} />
               ))}
             </nav>

@@ -5,7 +5,6 @@ import { api } from "@/panel/api";
 import { ActionResult, ConfirmButton, usePanelAction } from "@/panel/actions";
 import { ago, dateTime } from "@/panel/format";
 import { MemberDrawer } from "@/panel/MemberDetail";
-import { useSession } from "@/panel/session";
 import { Avatar, Badge, Card, Notice } from "@/panel/ui";
 
 export const Route = createFileRoute("/panel/moderasyon")({
@@ -37,7 +36,6 @@ interface Punishment {
 const KIND: Record<string, string> = { timeout: "Zaman aşımı", kick: "Atma", ban: "Yasaklama" };
 
 function ModerationPage() {
-  const session = useSession();
   const [open, setOpen] = useState<string | null>(null);
   const close = useCallback(() => setOpen(null), []);
   const bans = useQuery({
@@ -77,15 +75,13 @@ function ModerationPage() {
                     {b.reason ?? "sebep yok"}
                   </p>
                 </div>
-                {session.level !== "mod" && (
-                  <ConfirmButton
-                    label="Kaldır"
-                    confirmText="Yasak kaldırılsın mı?"
-                    danger={false}
-                    busy={unban.busy}
-                    onConfirm={() => unban.run(b.id)}
-                  />
-                )}
+                <ConfirmButton
+                  label="Kaldır"
+                  confirmText="Yasak kaldırılsın mı?"
+                  danger={false}
+                  busy={unban.busy}
+                  onConfirm={() => unban.run(b.id)}
+                />
               </li>
             ))}
           </ul>

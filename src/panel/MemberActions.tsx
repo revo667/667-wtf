@@ -11,7 +11,6 @@ import {
 } from "./actions";
 import { roleHex } from "./format";
 import { useMeta } from "./hooks";
-import { useSession } from "./session";
 import type { MemberRow } from "./types";
 import { selectClass } from "./ui";
 
@@ -48,7 +47,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
   );
 }
 
-/** Üye çekmecesindeki işlemler. Görünürlük panel seviyesine göre; asıl kontrol backend'de. */
+/** Üye çekmecesindeki işlemler. Yetki ve hiyerarşi kontrolü backend'de. */
 export function MemberActions({
   member,
   voiceChannelId,
@@ -56,8 +55,6 @@ export function MemberActions({
   member: MemberRow;
   voiceChannelId: string | null;
 }) {
-  const session = useSession();
-  const isAdmin = session.level !== "mod";
   const base = `/members/${member.id}`;
 
   const [nick, setNick] = useState(
@@ -129,11 +126,9 @@ export function MemberActions({
         <ActionResult msg={saveNick.msg} />
       </Section>
 
-      {isAdmin && (
-        <Section title="Roller">
-          <RoleEditor member={member} />
-        </Section>
-      )}
+      <Section title="Roller">
+        <RoleEditor member={member} />
+      </Section>
 
       <Section title="Zaman aşımı">
         {member.timed_out_until ? (
@@ -224,32 +219,30 @@ export function MemberActions({
         <ActionResult msg={kick.msg} />
       </Section>
 
-      {isAdmin && (
-        <Section title="Yasakla">
-          {reasonInput}
-          <label className="flex items-center gap-2 text-sm">
-            <span className="text-muted-foreground">Son mesajlarını sil</span>
-            <select
-              value={deleteDays}
-              onChange={(e) => setDeleteDays(Number(e.target.value))}
-              className={selectClass}
-            >
-              {[0, 1, 3, 7].map((d) => (
-                <option key={d} value={d}>
-                  {d === 0 ? "silme" : `son ${d} gün`}
-                </option>
-              ))}
-            </select>
-          </label>
-          <ConfirmButton
-            label="Yasakla"
-            confirmText={`${member.display_name} yasaklansın mı?`}
-            busy={ban.busy}
-            onConfirm={() => ban.run(undefined)}
-          />
-          <ActionResult msg={ban.msg} />
-        </Section>
-      )}
+      <Section title="Yasakla">
+        {reasonInput}
+        <label className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Son mesajlarını sil</span>
+          <select
+            value={deleteDays}
+            onChange={(e) => setDeleteDays(Number(e.target.value))}
+            className={selectClass}
+          >
+            {[0, 1, 3, 7].map((d) => (
+              <option key={d} value={d}>
+                {d === 0 ? "silme" : `son ${d} gün`}
+              </option>
+            ))}
+          </select>
+        </label>
+        <ConfirmButton
+          label="Yasakla"
+          confirmText={`${member.display_name} yasaklansın mı?`}
+          busy={ban.busy}
+          onConfirm={() => ban.run(undefined)}
+        />
+        <ActionResult msg={ban.msg} />
+      </Section>
     </div>
   );
 }

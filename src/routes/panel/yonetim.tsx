@@ -123,7 +123,8 @@ const LEVELS: { level: string; can: string[] }[] = [
     level: "mod",
     can: [
       "üyeleri, mesajları ve istatistikleri görür",
-      "takma ad değiştirir, susturur, atar, ses kanalından taşır",
+      "takma ad değiştirir, susturur, atar, yasaklar, yasak kaldırır, ses kanalından taşır",
+      "üyelere yetkisiz rol verir/alır (yetkili ve tehlikeli izinli roller hariç)",
       "tek mesaj siler, cezaları ve davetleri görür",
     ],
   },
@@ -131,7 +132,7 @@ const LEVELS: { level: string; can: string[] }[] = [
     level: "admin",
     can: [
       "mod'un yaptığı her şey",
-      "rolleri, kanalları ve kanal izinlerini yönetir; yasaklar",
+      "rolleri, kanalları ve kanal izinlerini yönetir; her rolü verir/alır",
       "sunucu ayarları, emoji, çıkartma, davet ve webhook",
       "bot ile mesaj gönderir, toplu siler, otomasyonu ayarlar",
       "koruma ayarlarını ve denetim kaydını görür, elle yedek alır",
