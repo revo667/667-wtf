@@ -4,17 +4,37 @@
   "name": "667-wtf",
   "compatibility_date": "2026-09-06",
   "compatibility_flags": ["nodejs_compat"],
-  // Tek Worker, üç alan adı. Hangisine ne gösterileceği src/server.ts'te ayrılır:
-  //   667.wtf, www.667.wtf → tanıtım sayfası
+  // Tek Worker. Hangisine ne gösterileceği src/lib/hosts.ts ve src/server.ts'te ayrılır:
+  //   667.wtf, www.667.wtf, www.revo667.com, admin.revo667.com → site (hesaplar revo667.com'da)
   //   panel.667.wtf        → panel (+ /api → Heroku proxy)
   "routes": [
     { "pattern": "667.wtf", "custom_domain": true },
     { "pattern": "www.667.wtf", "custom_domain": true },
     { "pattern": "panel.667.wtf", "custom_domain": true },
+    { "pattern": "revo667.com", "custom_domain": true },
+    { "pattern": "www.revo667.com", "custom_domain": true },
+    { "pattern": "admin.revo667.com", "custom_domain": true },
   ],
   // *.workers.dev ve önizleme adresleri kapalı: panel sadece kendi alan adından açılır.
   "workers_dev": false,
   "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "universe",
+      "database_id": "d06eb7d1-30f0-4e3b-bcbe-89709856863f",
+    },
+    {
+      "binding": "JOURNAL_DB",
+      "database_name": "journal",
+      "database_id": "69555d6c-1c98-4df8-bc6d-a4362f405b35",
+    },
+  ],
+  "vars": {
+    "GITHUB_CLIENT_ID": "Ov23likVwdSI20WCQln0",
+    "SITE_ORIGIN": "https://www.revo667.com",
+    "ADMIN_LOGINS": "revo667",
+  },
   // Secret'lar repoda DEĞİL, bir kez şu komutlarla girilir:
   //   wrangler secret put ORIGIN_SECRET       (backend'deki ORIGIN_SECRET ile aynı)
   //   wrangler secret put HEROKU_API_ORIGIN   (ör. https://<uygulama>.herokuapp.com)

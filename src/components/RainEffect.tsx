@@ -1,4 +1,7 @@
 import { useEffect, useRef } from "react";
+import { pointer } from "@/lib/pointer";
+
+const LIGHT_RADIUS = 140;
 
 type Drop = {
   x: number;
@@ -12,7 +15,20 @@ type Drop = {
  * Mor yağmur. `dim` panelde içeriğin önüne geçmesin diye yağmuru kısar.
  * "Hareketi azalt" açıksa ya da sekme gizliyse animasyon durur (tek kare çizili kalır).
  */
-export function RainEffect({ dim = false }: { dim?: boolean }) {
+const TONES = {
+  violet: [178, 132, 255],
+  silver: [196, 202, 214],
+} as const;
+
+export function RainEffect({
+  dim = false,
+  lit = false,
+  tone = "violet",
+}: {
+  dim?: boolean;
+  lit?: boolean;
+  tone?: keyof typeof TONES;
+}) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   useEffect(() => {
@@ -41,10 +57,22 @@ export function RainEffect({ dim = false }: { dim?: boolean }) {
     const paint = (advance: boolean) => {
       ctx.clearRect(0, 0, width, height);
       ctx.lineCap = "round";
+      const glow = lit && pointer.active;
+      const [r, g, b] = TONES[tone];
       for (const d of drops) {
+        let k = 0;
+        let dx = 0;
+        let dist = 0;
+        if (glow) {
+          dx = d.x - pointer.sx;
+          dist = Math.hypot(dx, d.y + d.len / 2 - pointer.sy);
+          if (dist < LIGHT_RADIUS) k = 1 - dist / LIGHT_RADIUS;
+        }
         ctx.beginPath();
-        ctx.strokeStyle = `rgba(178, 132, 255, ${d.opacity})`;
-        ctx.lineWidth = 1.1;
+        ctx.strokeStyle = k
+          ? `rgba(${r + (255 - r) * k}, ${g + (255 - g) * k}, ${b + (255 - b) * k}, ${Math.min(1, d.opacity + k * 0.75)})`
+          : `rgba(${r}, ${g}, ${b}, ${d.opacity})`;
+        ctx.lineWidth = 1.1 + k * 0.9;
         ctx.moveTo(d.x, d.y);
         ctx.lineTo(d.x - 1.2, d.y + d.len);
         ctx.stroke();
@@ -52,6 +80,7 @@ export function RainEffect({ dim = false }: { dim?: boolean }) {
         if (!advance) continue;
         d.y += d.speed;
         d.x -= 0.15;
+        if (k > 0 && dist > 0) d.x += (dx / dist) * k * k * 3.2;
         if (d.y > height) {
           d.y = -d.len;
           d.x = Math.random() * width;
@@ -94,7 +123,7 @@ export function RainEffect({ dim = false }: { dim?: boolean }) {
       document.removeEventListener("visibilitychange", start);
       reducedMotion.removeEventListener("change", start);
     };
-  }, []);
+  }, [lit, tone]);
 
   return (
     <div

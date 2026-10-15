@@ -2,7 +2,9 @@ import "./lib/error-capture";
 
 import { consumeLastCapturedError } from "./lib/error-capture";
 import { renderErrorPage } from "./lib/error-page";
-import { isPanelHost, PANEL_PREFIX } from "./lib/hosts";
+import { isPanelHost, PANEL_PREFIX, siteRedirect } from "./lib/hosts";
+import { ensureEnv } from "./lib/universe/env";
+import { handleUniverseApi } from "./lib/universe/api";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -183,14 +185,85 @@ function isPanelPath(pathname: string): boolean {
   return pathname === PANEL_PREFIX || pathname.startsWith(`${PANEL_PREFIX}/`);
 }
 
+const SITE_API_ROUTES = new Set([
+  "/api/667tool-update",
+  "/api/667tool-license",
+  "/api/667tool-admin",
+  "/api/discord-card",
+]);
+
+const PRESENCE_TTL_MS = 15_000;
+const DEV_PRESENCE_URL = "https://panel.667.wtf/api/public/presence";
+let presenceCache: { at: number; body: string } | null = null;
+
+async function presenceApi(): Promise<Response> {
+  const headers = {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "public, max-age=10",
+  };
+  if (presenceCache && Date.now() - presenceCache.at < PRESENCE_TTL_MS) {
+    return new Response(presenceCache.body, { headers });
+  }
+  const apiOrigin = readEnv("HEROKU_API_ORIGIN");
+  const secret = readEnv("ORIGIN_SECRET");
+  const devFallback = import.meta.env.DEV && (!apiOrigin || !secret);
+  if (!devFallback && (!apiOrigin || !secret)) {
+    return jsonError(503, "Durum servisi yapılandırılmamış");
+  }
+  try {
+    const upstream = devFallback
+      ? await fetch(DEV_PRESENCE_URL, { headers: { accept: "application/json" } })
+      : await fetch(new URL("/api/public/presence", apiOrigin), {
+          headers: { accept: "application/json", "x-origin-auth": secret ?? "" },
+        });
+    if (!upstream.ok) throw new Error(`presence ${upstream.status}`);
+    const body = await upstream.text();
+    presenceCache = { at: Date.now(), body };
+    return new Response(body, { headers });
+  } catch (error) {
+    console.error(error);
+    if (presenceCache) return new Response(presenceCache.body, { headers });
+    return jsonError(502, "Durum servisine ulaşılamadı");
+  }
+}
+
+async function siteApi(request: Request, url: URL, env: unknown): Promise<Response | null> {
+  if (url.pathname === "/api/presence" && request.method === "GET") {
+    return withSiteHeaders(await presenceApi());
+  }
+  if (url.pathname.startsWith("/api/universe") || url.pathname.startsWith("/api/account")) {
+    await ensureEnv(env);
+    return withSiteHeaders(await handleUniverseApi(request));
+  }
+  if (SITE_API_ROUTES.has(url.pathname)) return null;
+  return textResponse(404, "Not Found");
+}
+
 export default {
   async fetch(request: Request, env: unknown, ctx: unknown) {
     const url = new URL(request.url);
     const panel = isPanelHost(url.hostname);
+    const isApi = url.pathname.startsWith("/api/");
 
-    // /api sadece panel alan adında vardır. Tanıtım sitesi panelin varlığını belli etmez.
-    if (url.pathname.startsWith("/api/")) {
-      return panel ? proxyApi(request, url) : textResponse(404, "Not Found");
+    if (!isApi && (request.method === "GET" || request.method === "HEAD")) {
+      const target = siteRedirect(url);
+      if (target) {
+        return new Response(null, {
+          status: target.status,
+          headers: { location: target.location },
+        });
+      }
+    }
+
+    if (isApi) {
+      if (panel) return proxyApi(request, url);
+      try {
+        const handled = await siteApi(request, url, env);
+        if (handled) return handled;
+      } catch (error) {
+        console.error(error);
+        return jsonError(500, "Sunucu hatası");
+      }
     }
     if (!panel && isPanelPath(url.pathname)) return textResponse(404, "Not Found");
 

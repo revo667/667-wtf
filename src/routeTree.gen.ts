@@ -10,7 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as R667skinchangerRouteImport } from './routes/667skinchanger'
+import { Route as R667toolRouteImport } from './routes/667tool'
+import { Route as R667utilityRouteImport } from './routes/667utility'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as LolSkinChangerMacRouteImport } from './routes/lol-skin-changer-mac'
 import { Route as PanelRouteImport } from './routes/panel'
+import { Route as R667toolIndexRouteImport } from './routes/667tool.index'
+import { Route as R667toolAdminRouteImport } from './routes/667tool.admin'
+import { Route as Api667toolAdminRouteImport } from './routes/api/667tool-admin'
+import { Route as Api667toolLicenseRouteImport } from './routes/api/667tool-license'
+import { Route as Api667toolUpdateRouteImport } from './routes/api/667tool-update'
+import { Route as ApiDiscordCardRouteImport } from './routes/api/discord-card'
 import { Route as PanelIndexRouteImport } from './routes/panel/index'
 import { Route as PanelAnalizRouteImport } from './routes/panel/analiz'
 import { Route as PanelBotRouteImport } from './routes/panel/bot'
@@ -25,15 +36,76 @@ import { Route as PanelSunucuRouteImport } from './routes/panel/sunucu'
 import { Route as PanelUyelerRouteImport } from './routes/panel/uyeler'
 import { Route as PanelYedeklerRouteImport } from './routes/panel/yedekler'
 import { Route as PanelYonetimRouteImport } from './routes/panel/yonetim'
+import { Route as TrLolSkinChangerRouteImport } from './routes/tr/lol-skin-changer'
+import { Route as UniverseIndexRouteImport } from './routes/universe/index'
+import { Route as UniverseAdminRouteImport } from './routes/universe/admin'
+import { Route as UniverseAuthRouteImport } from './routes/universe/auth'
+import { Route as UniverseLoginRouteImport } from './routes/universe/login'
+import { Route as UniverseRegisterRouteImport } from './routes/universe/register'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const R667skinchangerRoute = R667skinchangerRouteImport.update({
+  id: '/667skinchanger',
+  path: '/667skinchanger',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R667toolRoute = R667toolRouteImport.update({
+  id: '/667tool',
+  path: '/667tool',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R667utilityRoute = R667utilityRouteImport.update({
+  id: '/667utility',
+  path: '/667utility',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LolSkinChangerMacRoute = LolSkinChangerMacRouteImport.update({
+  id: '/lol-skin-changer-mac',
+  path: '/lol-skin-changer-mac',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PanelRoute = PanelRouteImport.update({
   id: '/panel',
   path: '/panel',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const R667toolIndexRoute = R667toolIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => R667toolRoute,
+} as any)
+const R667toolAdminRoute = R667toolAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => R667toolRoute,
+} as any)
+const Api667toolAdminRoute = Api667toolAdminRouteImport.update({
+  id: '/api/667tool-admin',
+  path: '/api/667tool-admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Api667toolLicenseRoute = Api667toolLicenseRouteImport.update({
+  id: '/api/667tool-license',
+  path: '/api/667tool-license',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Api667toolUpdateRoute = Api667toolUpdateRouteImport.update({
+  id: '/api/667tool-update',
+  path: '/api/667tool-update',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDiscordCardRoute = ApiDiscordCardRouteImport.update({
+  id: '/api/discord-card',
+  path: '/api/discord-card',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PanelIndexRoute = PanelIndexRouteImport.update({
@@ -106,10 +178,50 @@ const PanelYonetimRoute = PanelYonetimRouteImport.update({
   path: '/yonetim',
   getParentRoute: () => PanelRoute,
 } as any)
+const TrLolSkinChangerRoute = TrLolSkinChangerRouteImport.update({
+  id: '/tr/lol-skin-changer',
+  path: '/tr/lol-skin-changer',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UniverseIndexRoute = UniverseIndexRouteImport.update({
+  id: '/universe/',
+  path: '/universe/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UniverseAdminRoute = UniverseAdminRouteImport.update({
+  id: '/universe/admin',
+  path: '/universe/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UniverseAuthRoute = UniverseAuthRouteImport.update({
+  id: '/universe/auth',
+  path: '/universe/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UniverseLoginRoute = UniverseLoginRouteImport.update({
+  id: '/universe/login',
+  path: '/universe/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UniverseRegisterRoute = UniverseRegisterRouteImport.update({
+  id: '/universe/register',
+  path: '/universe/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/667skinchanger': typeof R667skinchangerRoute
+  '/667tool': typeof R667toolRouteWithChildren
+  '/667utility': typeof R667utilityRoute
+  '/admin': typeof AdminRoute
+  '/lol-skin-changer-mac': typeof LolSkinChangerMacRoute
   '/panel': typeof PanelRouteWithChildren
+  '/667tool/admin': typeof R667toolAdminRoute
+  '/api/667tool-admin': typeof Api667toolAdminRoute
+  '/api/667tool-license': typeof Api667toolLicenseRoute
+  '/api/667tool-update': typeof Api667toolUpdateRoute
+  '/api/discord-card': typeof ApiDiscordCardRoute
   '/panel/analiz': typeof PanelAnalizRoute
   '/panel/bot': typeof PanelBotRoute
   '/panel/embed': typeof PanelEmbedRoute
@@ -123,10 +235,26 @@ export interface FileRoutesByFullPath {
   '/panel/uyeler': typeof PanelUyelerRoute
   '/panel/yedekler': typeof PanelYedeklerRoute
   '/panel/yonetim': typeof PanelYonetimRoute
+  '/tr/lol-skin-changer': typeof TrLolSkinChangerRoute
+  '/universe/admin': typeof UniverseAdminRoute
+  '/universe/auth': typeof UniverseAuthRoute
+  '/universe/login': typeof UniverseLoginRoute
+  '/universe/register': typeof UniverseRegisterRoute
+  '/667tool/': typeof R667toolIndexRoute
   '/panel/': typeof PanelIndexRoute
+  '/universe/': typeof UniverseIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/667skinchanger': typeof R667skinchangerRoute
+  '/667utility': typeof R667utilityRoute
+  '/admin': typeof AdminRoute
+  '/lol-skin-changer-mac': typeof LolSkinChangerMacRoute
+  '/667tool/admin': typeof R667toolAdminRoute
+  '/api/667tool-admin': typeof Api667toolAdminRoute
+  '/api/667tool-license': typeof Api667toolLicenseRoute
+  '/api/667tool-update': typeof Api667toolUpdateRoute
+  '/api/discord-card': typeof ApiDiscordCardRoute
   '/panel/analiz': typeof PanelAnalizRoute
   '/panel/bot': typeof PanelBotRoute
   '/panel/embed': typeof PanelEmbedRoute
@@ -140,12 +268,29 @@ export interface FileRoutesByTo {
   '/panel/uyeler': typeof PanelUyelerRoute
   '/panel/yedekler': typeof PanelYedeklerRoute
   '/panel/yonetim': typeof PanelYonetimRoute
+  '/tr/lol-skin-changer': typeof TrLolSkinChangerRoute
+  '/universe/admin': typeof UniverseAdminRoute
+  '/universe/auth': typeof UniverseAuthRoute
+  '/universe/login': typeof UniverseLoginRoute
+  '/universe/register': typeof UniverseRegisterRoute
+  '/667tool': typeof R667toolIndexRoute
   '/panel': typeof PanelIndexRoute
+  '/universe': typeof UniverseIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/667skinchanger': typeof R667skinchangerRoute
+  '/667tool': typeof R667toolRouteWithChildren
+  '/667utility': typeof R667utilityRoute
+  '/admin': typeof AdminRoute
+  '/lol-skin-changer-mac': typeof LolSkinChangerMacRoute
   '/panel': typeof PanelRouteWithChildren
+  '/667tool/admin': typeof R667toolAdminRoute
+  '/api/667tool-admin': typeof Api667toolAdminRoute
+  '/api/667tool-license': typeof Api667toolLicenseRoute
+  '/api/667tool-update': typeof Api667toolUpdateRoute
+  '/api/discord-card': typeof ApiDiscordCardRoute
   '/panel/analiz': typeof PanelAnalizRoute
   '/panel/bot': typeof PanelBotRoute
   '/panel/embed': typeof PanelEmbedRoute
@@ -159,13 +304,30 @@ export interface FileRoutesById {
   '/panel/uyeler': typeof PanelUyelerRoute
   '/panel/yedekler': typeof PanelYedeklerRoute
   '/panel/yonetim': typeof PanelYonetimRoute
+  '/tr/lol-skin-changer': typeof TrLolSkinChangerRoute
+  '/universe/admin': typeof UniverseAdminRoute
+  '/universe/auth': typeof UniverseAuthRoute
+  '/universe/login': typeof UniverseLoginRoute
+  '/universe/register': typeof UniverseRegisterRoute
+  '/667tool/': typeof R667toolIndexRoute
   '/panel/': typeof PanelIndexRoute
+  '/universe/': typeof UniverseIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/667skinchanger'
+    | '/667tool'
+    | '/667utility'
+    | '/admin'
+    | '/lol-skin-changer-mac'
     | '/panel'
+    | '/667tool/admin'
+    | '/api/667tool-admin'
+    | '/api/667tool-license'
+    | '/api/667tool-update'
+    | '/api/discord-card'
     | '/panel/analiz'
     | '/panel/bot'
     | '/panel/embed'
@@ -179,10 +341,26 @@ export interface FileRouteTypes {
     | '/panel/uyeler'
     | '/panel/yedekler'
     | '/panel/yonetim'
+    | '/tr/lol-skin-changer'
+    | '/universe/admin'
+    | '/universe/auth'
+    | '/universe/login'
+    | '/universe/register'
+    | '/667tool/'
     | '/panel/'
+    | '/universe/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/667skinchanger'
+    | '/667utility'
+    | '/admin'
+    | '/lol-skin-changer-mac'
+    | '/667tool/admin'
+    | '/api/667tool-admin'
+    | '/api/667tool-license'
+    | '/api/667tool-update'
+    | '/api/discord-card'
     | '/panel/analiz'
     | '/panel/bot'
     | '/panel/embed'
@@ -196,11 +374,28 @@ export interface FileRouteTypes {
     | '/panel/uyeler'
     | '/panel/yedekler'
     | '/panel/yonetim'
+    | '/tr/lol-skin-changer'
+    | '/universe/admin'
+    | '/universe/auth'
+    | '/universe/login'
+    | '/universe/register'
+    | '/667tool'
     | '/panel'
+    | '/universe'
   id:
     | '__root__'
     | '/'
+    | '/667skinchanger'
+    | '/667tool'
+    | '/667utility'
+    | '/admin'
+    | '/lol-skin-changer-mac'
     | '/panel'
+    | '/667tool/admin'
+    | '/api/667tool-admin'
+    | '/api/667tool-license'
+    | '/api/667tool-update'
+    | '/api/discord-card'
     | '/panel/analiz'
     | '/panel/bot'
     | '/panel/embed'
@@ -214,12 +409,34 @@ export interface FileRouteTypes {
     | '/panel/uyeler'
     | '/panel/yedekler'
     | '/panel/yonetim'
+    | '/tr/lol-skin-changer'
+    | '/universe/admin'
+    | '/universe/auth'
+    | '/universe/login'
+    | '/universe/register'
+    | '/667tool/'
     | '/panel/'
+    | '/universe/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  R667skinchangerRoute: typeof R667skinchangerRoute
+  R667toolRoute: typeof R667toolRouteWithChildren
+  R667utilityRoute: typeof R667utilityRoute
+  AdminRoute: typeof AdminRoute
+  LolSkinChangerMacRoute: typeof LolSkinChangerMacRoute
   PanelRoute: typeof PanelRouteWithChildren
+  Api667toolAdminRoute: typeof Api667toolAdminRoute
+  Api667toolLicenseRoute: typeof Api667toolLicenseRoute
+  Api667toolUpdateRoute: typeof Api667toolUpdateRoute
+  ApiDiscordCardRoute: typeof ApiDiscordCardRoute
+  TrLolSkinChangerRoute: typeof TrLolSkinChangerRoute
+  UniverseAdminRoute: typeof UniverseAdminRoute
+  UniverseAuthRoute: typeof UniverseAuthRoute
+  UniverseLoginRoute: typeof UniverseLoginRoute
+  UniverseRegisterRoute: typeof UniverseRegisterRoute
+  UniverseIndexRoute: typeof UniverseIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -231,11 +448,88 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/667skinchanger': {
+      id: '/667skinchanger'
+      path: '/667skinchanger'
+      fullPath: '/667skinchanger'
+      preLoaderRoute: typeof R667skinchangerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/667tool': {
+      id: '/667tool'
+      path: '/667tool'
+      fullPath: '/667tool'
+      preLoaderRoute: typeof R667toolRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/667utility': {
+      id: '/667utility'
+      path: '/667utility'
+      fullPath: '/667utility'
+      preLoaderRoute: typeof R667utilityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lol-skin-changer-mac': {
+      id: '/lol-skin-changer-mac'
+      path: '/lol-skin-changer-mac'
+      fullPath: '/lol-skin-changer-mac'
+      preLoaderRoute: typeof LolSkinChangerMacRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/panel': {
       id: '/panel'
       path: '/panel'
       fullPath: '/panel'
       preLoaderRoute: typeof PanelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/667tool/': {
+      id: '/667tool/'
+      path: '/'
+      fullPath: '/667tool/'
+      preLoaderRoute: typeof R667toolIndexRouteImport
+      parentRoute: typeof R667toolRoute
+    }
+    '/667tool/admin': {
+      id: '/667tool/admin'
+      path: '/admin'
+      fullPath: '/667tool/admin'
+      preLoaderRoute: typeof R667toolAdminRouteImport
+      parentRoute: typeof R667toolRoute
+    }
+    '/api/667tool-admin': {
+      id: '/api/667tool-admin'
+      path: '/api/667tool-admin'
+      fullPath: '/api/667tool-admin'
+      preLoaderRoute: typeof Api667toolAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/667tool-license': {
+      id: '/api/667tool-license'
+      path: '/api/667tool-license'
+      fullPath: '/api/667tool-license'
+      preLoaderRoute: typeof Api667toolLicenseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/667tool-update': {
+      id: '/api/667tool-update'
+      path: '/api/667tool-update'
+      fullPath: '/api/667tool-update'
+      preLoaderRoute: typeof Api667toolUpdateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/discord-card': {
+      id: '/api/discord-card'
+      path: '/api/discord-card'
+      fullPath: '/api/discord-card'
+      preLoaderRoute: typeof ApiDiscordCardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/panel/': {
@@ -336,8 +630,64 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PanelYonetimRouteImport
       parentRoute: typeof PanelRoute
     }
+    '/tr/lol-skin-changer': {
+      id: '/tr/lol-skin-changer'
+      path: '/tr/lol-skin-changer'
+      fullPath: '/tr/lol-skin-changer'
+      preLoaderRoute: typeof TrLolSkinChangerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/universe/': {
+      id: '/universe/'
+      path: '/universe'
+      fullPath: '/universe/'
+      preLoaderRoute: typeof UniverseIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/universe/admin': {
+      id: '/universe/admin'
+      path: '/universe/admin'
+      fullPath: '/universe/admin'
+      preLoaderRoute: typeof UniverseAdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/universe/auth': {
+      id: '/universe/auth'
+      path: '/universe/auth'
+      fullPath: '/universe/auth'
+      preLoaderRoute: typeof UniverseAuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/universe/login': {
+      id: '/universe/login'
+      path: '/universe/login'
+      fullPath: '/universe/login'
+      preLoaderRoute: typeof UniverseLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/universe/register': {
+      id: '/universe/register'
+      path: '/universe/register'
+      fullPath: '/universe/register'
+      preLoaderRoute: typeof UniverseRegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
+
+interface R667toolRouteChildren {
+  R667toolAdminRoute: typeof R667toolAdminRoute
+  R667toolIndexRoute: typeof R667toolIndexRoute
+}
+
+const R667toolRouteChildren: R667toolRouteChildren = {
+  R667toolAdminRoute: R667toolAdminRoute,
+  R667toolIndexRoute: R667toolIndexRoute,
+}
+
+const R667toolRouteWithChildren = R667toolRoute._addFileChildren(
+  R667toolRouteChildren,
+)
 
 interface PanelRouteChildren {
   PanelAnalizRoute: typeof PanelAnalizRoute
@@ -377,7 +727,22 @@ const PanelRouteWithChildren = PanelRoute._addFileChildren(PanelRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  R667skinchangerRoute: R667skinchangerRoute,
+  R667toolRoute: R667toolRouteWithChildren,
+  R667utilityRoute: R667utilityRoute,
+  AdminRoute: AdminRoute,
+  LolSkinChangerMacRoute: LolSkinChangerMacRoute,
   PanelRoute: PanelRouteWithChildren,
+  Api667toolAdminRoute: Api667toolAdminRoute,
+  Api667toolLicenseRoute: Api667toolLicenseRoute,
+  Api667toolUpdateRoute: Api667toolUpdateRoute,
+  ApiDiscordCardRoute: ApiDiscordCardRoute,
+  TrLolSkinChangerRoute: TrLolSkinChangerRoute,
+  UniverseAdminRoute: UniverseAdminRoute,
+  UniverseAuthRoute: UniverseAuthRoute,
+  UniverseLoginRoute: UniverseLoginRoute,
+  UniverseRegisterRoute: UniverseRegisterRoute,
+  UniverseIndexRoute: UniverseIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

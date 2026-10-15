@@ -73,12 +73,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "discord.gg/667" },
-      { name: "description", content: "667 clan" },
-      { property: "og:title", content: "discord.gg/667" },
-      { property: "og:description", content: "667 clan" },
+      { title: "667" },
+      {
+        name: "description",
+        content:
+          "667 is a Discord community and the home of 667 LoL Skin, 667 Tool, 667 Utility and Universe.",
+      },
+      { property: "og:site_name", content: "667" },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
     ],
     links: [
       {
