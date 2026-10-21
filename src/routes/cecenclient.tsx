@@ -550,7 +550,10 @@ function CecenClient() {
           </Reveal>
           <Reveal delay={80}>
             <h1 className="mx-auto mt-6 max-w-5xl bg-gradient-to-b from-white to-white/65 bg-clip-text font-[family-name:var(--font-jetbrains)] text-[1.75rem] leading-[1.15] font-extrabold tracking-[-0.04em] text-transparent sm:text-6xl">
-              {t.title.split("Tryhard")[0]}
+              <span className="bg-gradient-to-b from-violet-200 to-violet-500 bg-clip-text text-transparent">
+                Cecen Client
+              </span>
+              {t.title.split("Tryhard")[0].replace("Cecen Client", "")}
               <span className="bg-gradient-to-b from-violet-200 to-violet-500 bg-clip-text text-transparent">
                 Tryhard
               </span>
