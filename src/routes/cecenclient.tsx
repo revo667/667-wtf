@@ -1054,7 +1054,7 @@ function ListenDemo({ t }: { t: T["listenDemo"] }) {
 }
 
 const PAGE_URL = "https://667.wtf/cecenclient";
-const SEO_TITLE = "Cecen Client — DDNet Client with the Best Fast Inputs";
+const SEO_TITLE = "Cecen Client — DDNet Client";
 const DESCRIPTION =
   "Cecen Client is a free DDNet client for macOS, Windows and Linux: the best fast inputs in DDNet, the first DDNet social profiles and friends (Cecen Social), and Spotify listen along.";
 
