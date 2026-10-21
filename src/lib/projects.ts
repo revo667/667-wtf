@@ -5,6 +5,7 @@ export type Project = {
   href: string;
   image: string;
   external?: boolean;
+  wide?: boolean;
 };
 
 export const PROJECTS: Project[] = [
@@ -15,6 +16,15 @@ export const PROJECTS: Project[] = [
     platforms: "macOS · Windows",
     href: "/667skinchanger",
     image: "/shots/champions.jpg",
+  },
+  {
+    name: "Cecen Client",
+    description:
+      "DDNet client with the best fast inputs, social profiles and Spotify listen along.",
+    platforms: "macOS · Windows · Linux",
+    href: "/cecenclient",
+    image: "/projects/cecenclient.jpg",
+    wide: true,
   },
   {
     name: "667 Tool",

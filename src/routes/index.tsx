@@ -10,7 +10,7 @@ import { Hero, Members, Projects, STAR_SIZE } from "@/components/home/Sections";
 
 const TITLE = "667";
 const DESCRIPTION =
-  "667 is a Discord community and the home of 667 LoL Skin, 667 Tool, 667 Utility and Universe.";
+  "667 is a Discord community and the home of 667 LoL Skin, Cecen Client (DDNet client), 667 Tool, 667 Utility and Universe.";
 
 export const Route = createFileRoute("/")({
   head: () => ({

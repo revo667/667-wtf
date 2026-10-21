@@ -220,11 +220,13 @@ export function Atmosphere() {
     window.addEventListener("resize", resize);
     window.addEventListener("pointerdown", onDown, { passive: true });
     window.addEventListener("transitionend", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener("resize", resize);
       window.removeEventListener("pointerdown", onDown);
       window.removeEventListener("transitionend", onScroll);
+      window.removeEventListener("scroll", onScroll);
     };
   }, []);
 

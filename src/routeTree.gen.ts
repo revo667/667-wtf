@@ -14,6 +14,7 @@ import { Route as R667skinchangerRouteImport } from './routes/667skinchanger'
 import { Route as R667toolRouteImport } from './routes/667tool'
 import { Route as R667utilityRouteImport } from './routes/667utility'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as CecenclientRouteImport } from './routes/cecenclient'
 import { Route as LolSkinChangerMacRouteImport } from './routes/lol-skin-changer-mac'
 import { Route as PanelRouteImport } from './routes/panel'
 import { Route as R667toolIndexRouteImport } from './routes/667tool.index'
@@ -66,6 +67,11 @@ const R667utilityRoute = R667utilityRouteImport.update({
 const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CecenclientRoute = CecenclientRouteImport.update({
+  id: '/cecenclient',
+  path: '/cecenclient',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LolSkinChangerMacRoute = LolSkinChangerMacRouteImport.update({
@@ -215,6 +221,7 @@ export interface FileRoutesByFullPath {
   '/667tool': typeof R667toolRouteWithChildren
   '/667utility': typeof R667utilityRoute
   '/admin': typeof AdminRoute
+  '/cecenclient': typeof CecenclientRoute
   '/lol-skin-changer-mac': typeof LolSkinChangerMacRoute
   '/panel': typeof PanelRouteWithChildren
   '/667tool/admin': typeof R667toolAdminRoute
@@ -249,6 +256,7 @@ export interface FileRoutesByTo {
   '/667skinchanger': typeof R667skinchangerRoute
   '/667utility': typeof R667utilityRoute
   '/admin': typeof AdminRoute
+  '/cecenclient': typeof CecenclientRoute
   '/lol-skin-changer-mac': typeof LolSkinChangerMacRoute
   '/667tool/admin': typeof R667toolAdminRoute
   '/api/667tool-admin': typeof Api667toolAdminRoute
@@ -284,6 +292,7 @@ export interface FileRoutesById {
   '/667tool': typeof R667toolRouteWithChildren
   '/667utility': typeof R667utilityRoute
   '/admin': typeof AdminRoute
+  '/cecenclient': typeof CecenclientRoute
   '/lol-skin-changer-mac': typeof LolSkinChangerMacRoute
   '/panel': typeof PanelRouteWithChildren
   '/667tool/admin': typeof R667toolAdminRoute
@@ -321,6 +330,7 @@ export interface FileRouteTypes {
     | '/667tool'
     | '/667utility'
     | '/admin'
+    | '/cecenclient'
     | '/lol-skin-changer-mac'
     | '/panel'
     | '/667tool/admin'
@@ -355,6 +365,7 @@ export interface FileRouteTypes {
     | '/667skinchanger'
     | '/667utility'
     | '/admin'
+    | '/cecenclient'
     | '/lol-skin-changer-mac'
     | '/667tool/admin'
     | '/api/667tool-admin'
@@ -389,6 +400,7 @@ export interface FileRouteTypes {
     | '/667tool'
     | '/667utility'
     | '/admin'
+    | '/cecenclient'
     | '/lol-skin-changer-mac'
     | '/panel'
     | '/667tool/admin'
@@ -425,6 +437,7 @@ export interface RootRouteChildren {
   R667toolRoute: typeof R667toolRouteWithChildren
   R667utilityRoute: typeof R667utilityRoute
   AdminRoute: typeof AdminRoute
+  CecenclientRoute: typeof CecenclientRoute
   LolSkinChangerMacRoute: typeof LolSkinChangerMacRoute
   PanelRoute: typeof PanelRouteWithChildren
   Api667toolAdminRoute: typeof Api667toolAdminRoute
@@ -474,6 +487,13 @@ declare module '@tanstack/react-router' {
       path: '/admin'
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cecenclient': {
+      id: '/cecenclient'
+      path: '/cecenclient'
+      fullPath: '/cecenclient'
+      preLoaderRoute: typeof CecenclientRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lol-skin-changer-mac': {
@@ -731,6 +751,7 @@ const rootRouteChildren: RootRouteChildren = {
   R667toolRoute: R667toolRouteWithChildren,
   R667utilityRoute: R667utilityRoute,
   AdminRoute: AdminRoute,
+  CecenclientRoute: CecenclientRoute,
   LolSkinChangerMacRoute: LolSkinChangerMacRoute,
   PanelRoute: PanelRouteWithChildren,
   Api667toolAdminRoute: Api667toolAdminRoute,

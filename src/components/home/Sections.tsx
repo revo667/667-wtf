@@ -109,7 +109,7 @@ function ProjectTile({ p, big, at }: { p: Project; big: boolean; at: number }) {
       {...linkProps(p)}
       data-spotlight
       className={`reveal spotlight-card group relative isolate overflow-hidden rounded-xl border border-white/10 bg-card transition-colors duration-500 hover:border-accent/50 focus-visible:border-accent ${
-        big ? "col-span-2 row-span-2" : ""
+        big ? "col-span-2 row-span-2" : p.wide ? "col-span-2" : ""
       }`}
       style={delay(at)}
     >
@@ -156,7 +156,7 @@ export function Projects() {
           <Heading>Projects</Heading>
         </div>
 
-        <div className="hidden h-[min(56vh,500px)] grid-cols-4 grid-rows-2 gap-3 md:grid">
+        <div className="hidden h-[min(56vh,500px)] grid-cols-5 grid-rows-2 gap-3 md:grid">
           {PROJECTS.map((p, i) => (
             <ProjectTile key={p.name} p={p} big={i === 0} at={120 + i * 70} />
           ))}
