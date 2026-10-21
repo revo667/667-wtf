@@ -553,7 +553,7 @@ function CecenClient() {
               <span className="bg-gradient-to-b from-violet-200 to-violet-500 bg-clip-text text-transparent">
                 Cecen Client
               </span>
-              {t.title.split("Tryhard")[0].replace("Cecen Client", "")}
+              {(t.title.split("Tryhard")[0] ?? "").replace("Cecen Client", "")}
               <span className="bg-gradient-to-b from-violet-200 to-violet-500 bg-clip-text text-transparent">
                 Tryhard
               </span>
