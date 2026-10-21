@@ -204,6 +204,10 @@ const COPY: Record<
     faq: [
       { q: "Is it free?", a: "Yes, completely free." },
       {
+        q: "Does it lag?",
+        a: "With beta reports on, and within what DDNet allows, the stutters, freezes and jitter you get in game are reported to us, and problems on the client side are fixed fast. You can turn reports off in Cecen Client > Others > Beta.",
+      },
+      {
         q: "Will I lose my DDNet settings?",
         a: "No. Cecen Client uses the same DDNet folder, so your settings, binds, skins and friends stay.",
       },
@@ -355,6 +359,10 @@ const COPY: Record<
     faqTitle: "SSS",
     faq: [
       { q: "Ücretsiz mi?", a: "Evet, tamamen ücretsiz." },
+      {
+        q: "Lag yapıyor mu?",
+        a: "Beta raporları açıksa, DDNet'in izin verdiği süreçler dahilinde oyundaki lagların, donmaların ve jitter'ların bize bildirilir; client tarafındaki sorunlar hızla çözülür. Raporları Cecen Client > Others > Beta'dan kapatabilirsin.",
+      },
       {
         q: "DDNet ayarlarımı kaybeder miyim?",
         a: "Hayır. Cecen Client aynı DDNet klasörünü kullanır; ayarların, bind'ların, skin'lerin ve arkadaşların yerinde kalır.",
