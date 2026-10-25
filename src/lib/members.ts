@@ -18,7 +18,7 @@ export const MEMBERS: Member[] = [
   {
     discordId: "1118833327307227236",
     name: "selim",
-    handle: "beniyargilama",
+    handle: "revowtf",
     avatar: "/members/selim-itachi.png",
     badges: ["developer"],
     mood: "✦",
