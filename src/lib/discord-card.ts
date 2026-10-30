@@ -37,6 +37,7 @@ const CARD_ID = "1118833327307227236";
 const W = 400;
 const PAD = 16;
 const BANNER_H = 112;
+const MIN_H = 341;
 const BG = "#000000";
 const FONT = `'gg sans','Noto Sans','Helvetica Neue',Helvetica,Arial,sans-serif`;
 const MONO = `ui-monospace,SFMono-Regular,Menlo,Consolas,monospace`;
@@ -377,7 +378,7 @@ export async function renderDiscordCard(users: unknown[]): Promise<string> {
     );
     y += 46 + 8;
   }
-  const H = y - 8 + PAD;
+  const H = Math.max(MIN_H, y - 8 + PAD);
 
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" font-family="${FONT}">`,
