@@ -22,7 +22,6 @@ import { Route as R667toolAdminRouteImport } from './routes/667tool.admin'
 import { Route as Api667toolAdminRouteImport } from './routes/api/667tool-admin'
 import { Route as Api667toolLicenseRouteImport } from './routes/api/667tool-license'
 import { Route as Api667toolUpdateRouteImport } from './routes/api/667tool-update'
-import { Route as ApiDiscordCardRouteImport } from './routes/api/discord-card'
 import { Route as PanelIndexRouteImport } from './routes/panel/index'
 import { Route as PanelAnalizRouteImport } from './routes/panel/analiz'
 import { Route as PanelBotRouteImport } from './routes/panel/bot'
@@ -107,11 +106,6 @@ const Api667toolLicenseRoute = Api667toolLicenseRouteImport.update({
 const Api667toolUpdateRoute = Api667toolUpdateRouteImport.update({
   id: '/api/667tool-update',
   path: '/api/667tool-update',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiDiscordCardRoute = ApiDiscordCardRouteImport.update({
-  id: '/api/discord-card',
-  path: '/api/discord-card',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PanelIndexRoute = PanelIndexRouteImport.update({
@@ -228,7 +222,6 @@ export interface FileRoutesByFullPath {
   '/api/667tool-admin': typeof Api667toolAdminRoute
   '/api/667tool-license': typeof Api667toolLicenseRoute
   '/api/667tool-update': typeof Api667toolUpdateRoute
-  '/api/discord-card': typeof ApiDiscordCardRoute
   '/panel/analiz': typeof PanelAnalizRoute
   '/panel/bot': typeof PanelBotRoute
   '/panel/embed': typeof PanelEmbedRoute
@@ -262,7 +255,6 @@ export interface FileRoutesByTo {
   '/api/667tool-admin': typeof Api667toolAdminRoute
   '/api/667tool-license': typeof Api667toolLicenseRoute
   '/api/667tool-update': typeof Api667toolUpdateRoute
-  '/api/discord-card': typeof ApiDiscordCardRoute
   '/panel/analiz': typeof PanelAnalizRoute
   '/panel/bot': typeof PanelBotRoute
   '/panel/embed': typeof PanelEmbedRoute
@@ -299,7 +291,6 @@ export interface FileRoutesById {
   '/api/667tool-admin': typeof Api667toolAdminRoute
   '/api/667tool-license': typeof Api667toolLicenseRoute
   '/api/667tool-update': typeof Api667toolUpdateRoute
-  '/api/discord-card': typeof ApiDiscordCardRoute
   '/panel/analiz': typeof PanelAnalizRoute
   '/panel/bot': typeof PanelBotRoute
   '/panel/embed': typeof PanelEmbedRoute
@@ -337,7 +328,6 @@ export interface FileRouteTypes {
     | '/api/667tool-admin'
     | '/api/667tool-license'
     | '/api/667tool-update'
-    | '/api/discord-card'
     | '/panel/analiz'
     | '/panel/bot'
     | '/panel/embed'
@@ -371,7 +361,6 @@ export interface FileRouteTypes {
     | '/api/667tool-admin'
     | '/api/667tool-license'
     | '/api/667tool-update'
-    | '/api/discord-card'
     | '/panel/analiz'
     | '/panel/bot'
     | '/panel/embed'
@@ -407,7 +396,6 @@ export interface FileRouteTypes {
     | '/api/667tool-admin'
     | '/api/667tool-license'
     | '/api/667tool-update'
-    | '/api/discord-card'
     | '/panel/analiz'
     | '/panel/bot'
     | '/panel/embed'
@@ -443,7 +431,6 @@ export interface RootRouteChildren {
   Api667toolAdminRoute: typeof Api667toolAdminRoute
   Api667toolLicenseRoute: typeof Api667toolLicenseRoute
   Api667toolUpdateRoute: typeof Api667toolUpdateRoute
-  ApiDiscordCardRoute: typeof ApiDiscordCardRoute
   TrLolSkinChangerRoute: typeof TrLolSkinChangerRoute
   UniverseAdminRoute: typeof UniverseAdminRoute
   UniverseAuthRoute: typeof UniverseAuthRoute
@@ -543,13 +530,6 @@ declare module '@tanstack/react-router' {
       path: '/api/667tool-update'
       fullPath: '/api/667tool-update'
       preLoaderRoute: typeof Api667toolUpdateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/api/discord-card': {
-      id: '/api/discord-card'
-      path: '/api/discord-card'
-      fullPath: '/api/discord-card'
-      preLoaderRoute: typeof ApiDiscordCardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/panel/': {
@@ -757,7 +737,6 @@ const rootRouteChildren: RootRouteChildren = {
   Api667toolAdminRoute: Api667toolAdminRoute,
   Api667toolLicenseRoute: Api667toolLicenseRoute,
   Api667toolUpdateRoute: Api667toolUpdateRoute,
-  ApiDiscordCardRoute: ApiDiscordCardRoute,
   TrLolSkinChangerRoute: TrLolSkinChangerRoute,
   UniverseAdminRoute: UniverseAdminRoute,
   UniverseAuthRoute: UniverseAuthRoute,

@@ -5,6 +5,7 @@ import { renderErrorPage } from "./lib/error-page";
 import { isPanelHost, PANEL_PREFIX, siteRedirect } from "./lib/hosts";
 import { ensureEnv } from "./lib/universe/env";
 import { handleUniverseApi } from "./lib/universe/api";
+import { renderDiscordCard } from "./lib/discord-card";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -189,7 +190,6 @@ const SITE_API_ROUTES = new Set([
   "/api/667tool-update",
   "/api/667tool-license",
   "/api/667tool-admin",
-  "/api/discord-card",
 ]);
 
 const PRESENCE_TTL_MS = 15_000;
@@ -227,9 +227,24 @@ async function presenceApi(): Promise<Response> {
   }
 }
 
+async function discordCardApi(): Promise<Response> {
+  const presence = await presenceApi();
+  const body = presence.ok ? ((await presence.json()) as { users?: unknown[] }) : {};
+  const svg = await renderDiscordCard(Array.isArray(body.users) ? body.users : []);
+  return new Response(svg, {
+    headers: {
+      "content-type": "image/svg+xml; charset=utf-8",
+      "cache-control": "public, max-age=60, stale-while-revalidate=300",
+    },
+  });
+}
+
 async function siteApi(request: Request, url: URL, env: unknown): Promise<Response | null> {
   if (url.pathname === "/api/presence" && request.method === "GET") {
     return withSiteHeaders(await presenceApi());
+  }
+  if (url.pathname === "/api/discord-card" && request.method === "GET") {
+    return withSiteHeaders(await discordCardApi());
   }
   if (url.pathname.startsWith("/api/universe") || url.pathname.startsWith("/api/account")) {
     await ensureEnv(env);
