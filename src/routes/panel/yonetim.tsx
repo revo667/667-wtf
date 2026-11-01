@@ -166,9 +166,9 @@ function Levels() {
         ))}
       </ul>
       <p className="mt-4 text-xs text-muted-foreground">
-        Hesaplar ve seviyeler Heroku'daki PANEL_USERS ayarında durur ve bilerek panelden
-        değiştirilemez: ele geçirilmiş bir oturum kendini ya da başkasını yükseltemesin. Değiştirmek
-        için:{" "}
+        Owner hesapları Heroku'daki PANEL_USERS ayarında durur ve panelden değiştirilemez: ele
+        geçirilmiş bir oturum kendini owner'a yükseltemesin. Admin ve mod hesaplarını owner'lar
+        Panel hesapları kartından ekler. Owner eklemek için:{" "}
         <code className="font-mono text-foreground/80">
           heroku config:set PANEL_USERS=... -a admin-667-api &gt; /dev/null
         </code>
@@ -248,10 +248,9 @@ function HierarchyForm({ info, owner }: { info: StaffInfo; owner: boolean }) {
         <p className="text-xs font-medium">Discord hesabı bağlı panel hesapları</p>
         {info.linked.length === 0 ? (
           <p className="text-xs text-muted-foreground">
-            Yok. Bağlamak için PANEL_USERS girdisine Discord ID ekle:{" "}
-            <code className="font-mono text-foreground/80">
-              kullanıcı:seviye:telegram_chat_id:discord_id
-            </code>
+            Yok. Admin ve mod hesaplarına Panel hesapları kartından Discord ID ekleyebilirsin; owner
+            için PANEL_USERS girdisinin sonuna{" "}
+            <code className="font-mono text-foreground/80">:discord_id</code> eklenir.
           </p>
         ) : (
           <ul className="space-y-1 text-sm">

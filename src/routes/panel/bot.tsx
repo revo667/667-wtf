@@ -12,12 +12,13 @@ import {
   usePanelAction,
 } from "@/panel/actions";
 import { BotProfile } from "@/panel/BotProfile";
+import { BOTS, type BotKey } from "@/panel/bots";
 import { Drawer } from "@/panel/Drawer";
 import { BlocksEditor } from "@/panel/embed/BlocksEditor";
 import { ClassicEditor } from "@/panel/embed/ClassicEditor";
 import { emptyDoc, newEmbed, normalize, type Doc } from "@/panel/embed/doc";
 import { MessagePreview } from "@/panel/embed/Preview";
-import { dateTime, roleHex } from "@/panel/format";
+import { ago, dateTime, roleHex } from "@/panel/format";
 import { useMeta } from "@/panel/hooks";
 import { RolePicker } from "@/panel/RolePicker";
 import { useSession } from "@/panel/session";
@@ -28,9 +29,25 @@ export const Route = createFileRoute("/panel/bot")({
   component: BotPage,
 });
 
+interface BotStatus {
+  bot: BotKey;
+  title: string;
+  user_id: string | null;
+  name: string;
+  avatar: string;
+  ready: boolean;
+  online: boolean;
+  configured: boolean;
+  run_id: number;
+  version: string;
+  started_at: number;
+  seen_at: number;
+}
+
 interface CommandRow {
   name: string;
   description: string;
+  bot: BotKey;
   enabled: boolean;
   /** null: genel komut rolleri geçerli */
   roles: string[] | null;
@@ -43,15 +60,41 @@ interface GuildTag {
   auto_remove: boolean;
 }
 
+interface TempVoice {
+  enabled: boolean;
+  hub_id: string | null;
+  category_id: string | null;
+  name: string;
+  limit: number;
+  interface_channel_id: string | null;
+  interface_message_id: string | null;
+  member_role_id: string | null;
+}
+
+interface Verify {
+  enabled: boolean;
+  role_id: string | null;
+  remove_role_id: string | null;
+  captcha: boolean;
+  min_age_days: number;
+}
+
+interface BotVoice {
+  channel: { channel_id: string; name: string | null } | null;
+  stay: string | null;
+}
+
 interface BotInfo {
   user: { id: string; name: string; avatar: string };
   ready: boolean;
-  voice: { channel_id: string; name: string | null } | null;
-  /** "Hep seste kal" kanalı; null: kapalı */
-  voice_stay: string | null;
+  bots: BotStatus[];
+  /** Her botun bulunduğu ses kanalı ve "hep seste kal" kanalı (null: kapalı) */
+  voices: Record<BotKey, BotVoice>;
   default_roles: string[];
   commands: CommandRow[];
   guild_tag: GuildTag;
+  temp_voice: TempVoice;
+  verify: Verify;
   /** Bu rollerdekiler /ban ile banlanamaz; sadece panelden admin/owner. */
   ban_protected_roles: string[];
   locked: { id: string; name: string; reason: string; at: number }[];
@@ -129,7 +172,7 @@ function BotPage() {
   let body;
   if (tab === "paneller") body = <RolePanels />;
   else if (tab === "profil") body = <BotProfile isOwner={isOwner} />;
-  else if (tab === "log") body = <Terminal />;
+  else if (tab === "log") body = <TerminalTab />;
   else if (q.error) body = <Notice error={q.error} />;
   else if (!q.data)
     body = <p className="py-8 text-center text-sm text-muted-foreground">Yükleniyor…</p>;
@@ -154,108 +197,124 @@ function BotPage() {
 // ---------------------------------------------------------------------------------------------
 // Genel
 
-function General({ info, isOwner }: { info: BotInfo; isOwner: boolean }) {
+function VoiceCard({ voices }: { voices: Record<BotKey, BotVoice> }) {
+  const [bot, setBot] = useState<BotKey>("voice");
+  return (
+    <Card title="Ses">
+      <div className="space-y-3">
+        <Segmented value={bot} options={BOTS} onChange={setBot} label="Hangi bot" />
+        <VoiceOf key={`${bot}${JSON.stringify(voices[bot])}`} bot={bot} voice={voices[bot]} />
+      </div>
+    </Card>
+  );
+}
+
+function VoiceOf({ bot, voice }: { bot: BotKey; voice: BotVoice }) {
   const meta = useMeta();
   const voiceChannels = (meta.data?.channels ?? []).filter(
     (c) => c.kind === "voice" || c.kind === "stage",
   );
-  const [channel, setChannel] = useState(info.voice?.channel_id ?? "");
-  const join = usePanelAction(() => api("POST", "/bot/voice", { channel_id: channel }), {
-    success: "Bot sese girdi",
+  const label = BOTS.find((b) => b.value === bot)?.label ?? bot;
+  const [channel, setChannel] = useState(voice.channel?.channel_id ?? "");
+  const join = usePanelAction(() => api("POST", `/bot/voice?bot=${bot}`, { channel_id: channel }), {
+    success: `${label} botu sese girdi`,
   });
-  const leave = usePanelAction(() => api("DELETE", "/bot/voice"), { success: "Bot sesten çıktı" });
+  const leave = usePanelAction(() => api("DELETE", `/bot/voice?bot=${bot}`), {
+    success: `${label} botu sesten çıktı`,
+  });
   const stay = usePanelAction(
-    (channelId: string | null) => api("PUT", "/bot/voice/stay", { channel_id: channelId }),
+    (channelId: string | null) =>
+      api("PUT", `/bot/voice/stay?bot=${bot}`, { channel_id: channelId }),
     { success: "Kaydedildi" },
   );
   // Açarken seçili kanal, seçim yoksa botun şu an bulunduğu kanal tutulur.
-  const stayTarget = channel || info.voice?.channel_id || "";
-  const stayName = info.voice_stay
-    ? (voiceChannels.find((c) => c.id === info.voice_stay)?.name ?? info.voice_stay)
+  const stayTarget = channel || voice.channel?.channel_id || "";
+  const stayName = voice.stay
+    ? (voiceChannels.find((c) => c.id === voice.stay)?.name ?? voice.stay)
     : null;
 
   return (
+    <div className="space-y-3 text-sm">
+      <p className="text-muted-foreground">
+        {label} botu:{" "}
+        {voice.channel ? (
+          <span className="text-foreground">#{voice.channel.name ?? voice.channel.channel_id}</span>
+        ) : (
+          "seste değil"
+        )}
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          aria-label="Ses kanalı"
+          value={channel}
+          onChange={(e) => setChannel(e.target.value)}
+          className={selectClass}
+        >
+          <option value="">Ses kanalı seç…</option>
+          {voiceChannels.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={!channel || join.busy}
+          onClick={() => join.run(undefined)}
+          className={primaryButtonClass}
+        >
+          Sese sok
+        </button>
+        {voice.channel && (
+          <button
+            type="button"
+            disabled={leave.busy}
+            onClick={() => leave.run(undefined)}
+            className={buttonClass}
+          >
+            Sesten çıkar
+          </button>
+        )}
+      </div>
+      <Toggle
+        checked={voice.stay !== null}
+        disabled={stay.busy || (voice.stay === null && !stayTarget)}
+        onChange={(on) => stay.run(on ? stayTarget : null)}
+        label="Bot açıkken hep seste kalsın"
+      />
+      {stayName ? (
+        <p className="text-xs text-muted-foreground">
+          {label} botu <span className="text-foreground">#{stayName}</span> kanalında tutuluyor:
+          açılışta girer; atılır, taşınır ya da bağlantısı düşerse birkaç saniye içinde geri döner.
+          Sese sokmak kanalı değiştirir, sesten çıkarmak bunu kapatır.
+        </p>
+      ) : (
+        !stayTarget && (
+          <p className="text-xs text-muted-foreground">Açmak için önce bir ses kanalı seç.</p>
+        )
+      )}
+      <ActionResult msg={join.msg ?? leave.msg ?? stay.msg} />
+      <p className="text-xs text-muted-foreground">
+        Dört botun her biri ayrı ayrı sese sokulabilir. Botlar seste sadece durur, ses çalmaz.
+        Discord'da /join ve /leave Voice botunu yönetir.
+      </p>
+    </div>
+  );
+}
+
+function General({ info, isOwner }: { info: BotInfo; isOwner: boolean }) {
+  return (
     <div className="grid gap-4 lg:grid-cols-2">
-      <Card title="Bot">
-        <div className="flex items-center gap-3">
-          <Avatar src={info.user.avatar} size={40} />
-          <div>
-            <p className="text-sm font-medium">{info.user.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {info.ready ? "Discord'a bağlı" : "bağlanıyor…"}
-            </p>
-          </div>
-        </div>
-        <div className="mt-5 space-y-3 text-sm">
-          <p className="text-muted-foreground">
-            Ses:{" "}
-            {info.voice ? (
-              <span className="text-foreground">#{info.voice.name ?? info.voice.channel_id}</span>
-            ) : (
-              "seste değil"
-            )}
-          </p>
-          <div className="flex flex-wrap items-center gap-2">
-            <select
-              aria-label="Ses kanalı"
-              value={channel}
-              onChange={(e) => setChannel(e.target.value)}
-              className={selectClass}
-            >
-              <option value="">Ses kanalı seç…</option>
-              {voiceChannels.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="button"
-              disabled={!channel || join.busy}
-              onClick={() => join.run(undefined)}
-              className={primaryButtonClass}
-            >
-              Sese sok
-            </button>
-            {info.voice && (
-              <button
-                type="button"
-                disabled={leave.busy}
-                onClick={() => leave.run(undefined)}
-                className={buttonClass}
-              >
-                Sesten çıkar
-              </button>
-            )}
-          </div>
-          <Toggle
-            checked={info.voice_stay !== null}
-            disabled={stay.busy || (info.voice_stay === null && !stayTarget)}
-            onChange={(on) => stay.run(on ? stayTarget : null)}
-            label="Bot açıkken hep seste kalsın"
-          />
-          {stayName ? (
-            <p className="text-xs text-muted-foreground">
-              Bot <span className="text-foreground">#{stayName}</span> kanalında tutuluyor: açılışta
-              girer; atılır, taşınır ya da bağlantısı düşerse birkaç saniye içinde geri döner. Sese
-              sokmak kanalı değiştirir, sesten çıkarmak (/leave dahil) bunu kapatır.
-            </p>
-          ) : (
-            !stayTarget && (
-              <p className="text-xs text-muted-foreground">Açmak için önce bir ses kanalı seç.</p>
-            )
-          )}
-          <ActionResult msg={join.msg ?? leave.msg ?? stay.msg} />
-          <p className="text-xs text-muted-foreground">
-            Bot seste sadece durur, ses çalmaz. Discord'dan /join ve /leave ile de yapılır.
-          </p>
-        </div>
-      </Card>
+      <BotsCard bots={info.bots} />
+      <VoiceCard voices={info.voices} />
+      <TempVoiceCard key={`tv${JSON.stringify(info.temp_voice)}`} value={info.temp_voice} />
+      <VerifyCard key={`v${JSON.stringify(info.verify)}`} value={info.verify} />
       <GuildTagCard key={JSON.stringify(info.guild_tag)} tag={info.guild_tag} />
       {info.locked.length > 0 && (
         <Card title="Komutları kilitlenenler" className="lg:col-span-2">
           <p className="mb-3 text-xs text-muted-foreground">
-            /ban, /nuke ya da /toplurol sınırını aşanların Discord komutları kilitlenir.
+            /ban, /kick, /timeout, /purge, /nuke ya da /toplurol sınırını aşanların Discord
+            komutları kilitlenir.
           </p>
           <ul className="space-y-2">
             {info.locked.map((l) => (
@@ -351,6 +410,277 @@ function GuildTagCard({ tag }: { tag: GuildTag }) {
   );
 }
 
+function TempVoiceCard({ value }: { value: TempVoice }) {
+  const meta = useMeta();
+  const channels = meta.data?.channels ?? [];
+  const voices = channels.filter((c) => c.kind === "voice");
+  const categories = channels.filter((c) => c.kind === "category");
+  const roles = (meta.data?.roles ?? []).filter((r) => !r.managed && r.name !== "@everyone");
+  const [form, setForm] = useState<TempVoice>(value);
+  const save = usePanelAction(() => api("PUT", "/bot/temp-voice", form), {
+    success: "Kaydedildi",
+  });
+  const setup = usePanelAction(() => api("POST", "/bot/temp-voice/setup"), {
+    success: "Kuruldu: kategori, oda oluşturma kanalı ve buton paneli hazır",
+  });
+  const iface = channels.find((c) => c.id === value.interface_channel_id);
+
+  return (
+    <Card title="Özel odalar · 667 Voice">
+      <p className="mb-3 text-xs text-muted-foreground">
+        Oda oluşturma kanalına giren üyeye kendi ses odası açılır, oda boşalınca silinir. Sahibi
+        odasını paneldeki butonlarla yönetir: isim, limit, gizlilik, bekleme odası, sohbet, güven,
+        davet, at, bölge, engel, sahiplenme, devir ve silme. Discord'da /tempvoice ile de kurulur.
+      </p>
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-border bg-background/40 p-3">
+          <ConfirmButton
+            label={value.interface_channel_id ? "Yeniden kur" : "Discord'da kur"}
+            danger={false}
+            confirmText="Eksik kanallar oluşturulsun ve buton paneli (yeniden) gönderilsin mi?"
+            busy={setup.busy}
+            onConfirm={() => setup.run(undefined)}
+          />
+          <span className="text-xs text-muted-foreground">
+            {iface ? `Buton paneli: #${iface.name}` : "Henüz kurulmadı"}
+          </span>
+        </div>
+        <label className="block space-y-1 text-xs text-muted-foreground">
+          <span>Oda oluşturma kanalı</span>
+          <select
+            value={form.hub_id ?? ""}
+            onChange={(e) => setForm({ ...form, hub_id: e.target.value || null })}
+            className={`${selectClass} w-full`}
+          >
+            <option value="">Ses kanalı seç…</option>
+            {voices.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block space-y-1 text-xs text-muted-foreground">
+          <span>Odaların açılacağı kategori</span>
+          <select
+            value={form.category_id ?? ""}
+            onChange={(e) => setForm({ ...form, category_id: e.target.value || null })}
+            className={`${selectClass} w-full`}
+          >
+            <option value="">Oda açma kanalının kategorisi</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="block space-y-1 text-xs text-muted-foreground">
+          <span>Temel rol (kilit ve gizlilik bu role uygulanır)</span>
+          <select
+            value={form.member_role_id ?? ""}
+            onChange={(e) => setForm({ ...form, member_role_id: e.target.value || null })}
+            className={`${selectClass} w-full`}
+          >
+            <option value="">@everyone</option>
+            {roles.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+          <span className="block text-[11px] leading-relaxed">
+            Odalar kategorinin izinleriyle açılır. Temel rol seçiliyse oda sahibi kilitleyip
+            gizlediğinde sadece bu rolün izni değişir, @everyone izni kategoriden geldiği gibi
+            kalır.
+          </span>
+        </label>
+        <div className="flex flex-wrap gap-3">
+          <label className="min-w-0 flex-1 space-y-1 text-xs text-muted-foreground">
+            <span>Oda adı ({"{name}"} = üyenin adı)</span>
+            <input
+              value={form.name}
+              maxLength={90}
+              onChange={(e) => setForm({ ...form, name: e.target.value })}
+              className={`${inputClass} w-full`}
+            />
+          </label>
+          <label className="w-28 space-y-1 text-xs text-muted-foreground">
+            <span>Kişi sınırı</span>
+            <input
+              type="number"
+              min={0}
+              max={99}
+              value={form.limit}
+              onChange={(e) =>
+                setForm({ ...form, limit: Math.max(0, Math.min(99, Number(e.target.value) || 0)) })
+              }
+              className={`${inputClass} w-full`}
+            />
+          </label>
+        </div>
+        <Toggle
+          checked={form.enabled}
+          onChange={(v) => setForm({ ...form, enabled: v })}
+          label="açık"
+        />
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={save.busy}
+            onClick={() => save.run(undefined)}
+            className={primaryButtonClass}
+          >
+            Kaydet
+          </button>
+          <ActionResult msg={setup.msg ?? save.msg} />
+        </div>
+      </div>
+    </Card>
+  );
+}
+
+function VerifyCard({ value }: { value: Verify }) {
+  const meta = useMeta();
+  const roles = assignable(meta.data?.roles);
+  const texts = (meta.data?.channels ?? []).filter(
+    (c) => c.kind === "text" || c.kind === "announcement",
+  );
+  const [form, setForm] = useState<Verify>(value);
+  const [channel, setChannel] = useState("");
+  const save = usePanelAction(() => api("PUT", "/bot/verify", form), { success: "Kaydedildi" });
+  const post = usePanelAction(() => api("POST", "/bot/verify/panel", { channel_id: channel }), {
+    success: "Panel gönderildi",
+  });
+  const roleSelect = (label: string, key: "role_id" | "remove_role_id", empty: string) => (
+    <label className="block space-y-1 text-xs text-muted-foreground">
+      <span>{label}</span>
+      <select
+        value={form[key] ?? ""}
+        onChange={(e) => setForm({ ...form, [key]: e.target.value || null })}
+        className={`${selectClass} w-full`}
+      >
+        <option value="">{empty}</option>
+        {roles.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+
+  return (
+    <Card title="Doğrulama · 667 User">
+      <p className="mb-3 text-xs text-muted-foreground">
+        Üye paneldeki butona basar, açıksa basit bir toplama sorusunu cevaplar ve doğrulama rolünü
+        alır. Kanalları sadece bu role açarsan sunucu doğrulanmamışlara kapalı olur. Yeni gelenlere
+        doğrulanmamış rolünü Otomasyon › Otomatik rol ile verebilirsin.
+      </p>
+      <div className="space-y-3">
+        {roleSelect("Verilecek rol", "role_id", "Rol seç…")}
+        {roleSelect("Doğrulanınca alınacak rol (opsiyonel)", "remove_role_id", "yok")}
+        <label className="block w-40 space-y-1 text-xs text-muted-foreground">
+          <span>En az hesap yaşı (gün)</span>
+          <input
+            type="number"
+            min={0}
+            max={365}
+            value={form.min_age_days}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                min_age_days: Math.max(0, Math.min(365, Number(e.target.value) || 0)),
+              })
+            }
+            className={`${inputClass} w-full`}
+          />
+        </label>
+        <div className="flex flex-wrap gap-4">
+          <Toggle
+            checked={form.enabled}
+            onChange={(v) => setForm({ ...form, enabled: v })}
+            label="açık"
+          />
+          <Toggle
+            checked={form.captcha}
+            onChange={(v) => setForm({ ...form, captcha: v })}
+            label="toplama sorusu sor"
+          />
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            disabled={save.busy}
+            onClick={() => save.run(undefined)}
+            className={primaryButtonClass}
+          >
+            Kaydet
+          </button>
+        </div>
+        {value.enabled && value.role_id && (
+          <div className="flex flex-wrap items-center gap-2 border-t border-border pt-3">
+            <select
+              aria-label="Panel kanalı"
+              value={channel}
+              onChange={(e) => setChannel(e.target.value)}
+              className={selectClass}
+            >
+              <option value="">Panel kanalı seç…</option>
+              {texts.map((c) => (
+                <option key={c.id} value={c.id}>
+                  #{c.name}
+                </option>
+              ))}
+            </select>
+            <button
+              type="button"
+              disabled={!channel || post.busy}
+              onClick={() => post.run(undefined)}
+              className={buttonClass}
+            >
+              Doğrulama panelini gönder
+            </button>
+          </div>
+        )}
+        <ActionResult msg={save.msg ?? post.msg} />
+      </div>
+    </Card>
+  );
+}
+
+function BotsCard({ bots }: { bots: BotStatus[] }) {
+  return (
+    <Card title="Botlar" className="lg:col-span-2">
+      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {bots.map((b) => (
+          <li
+            key={b.bot}
+            className="flex items-center gap-3 rounded-lg border border-border bg-background/40 p-3"
+          >
+            <Avatar src={b.avatar || null} size={36} />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-medium">{b.name || b.title}</p>
+              <p className="truncate text-xs text-muted-foreground">
+                {!b.configured
+                  ? "token ayarlı değil"
+                  : b.online
+                    ? `çalışıyor · ${ago(b.started_at)} başladı`
+                    : b.seen_at
+                      ? `kapalı · son görülme ${ago(b.seen_at)}`
+                      : "hiç başlamadı"}
+              </p>
+            </div>
+            <Badge tone={b.online ? "accent" : b.configured ? "danger" : "muted"}>
+              {b.online ? "açık" : "kapalı"}
+            </Badge>
+          </li>
+        ))}
+      </ul>
+    </Card>
+  );
+}
+
 function LockedRow({ item, isOwner }: { item: BotInfo["locked"][number]; isOwner: boolean }) {
   const unlock = usePanelAction(() => api("POST", `/bot/locks/${item.id}/release`), {
     success: "Kilit açıldı",
@@ -428,7 +758,10 @@ function Commands({ info, isOwner }: { info: BotInfo; isOwner: boolean }) {
           {rows.map((c) => (
             <li key={c.name} className="flex flex-wrap items-start gap-3 py-3">
               <div className="w-52 shrink-0">
-                <p className="font-mono text-sm">/{c.name}</p>
+                <p className="flex items-center gap-2 font-mono text-sm">
+                  /{c.name}
+                  <Badge>{BOTS.find((b) => b.value === c.bot)?.label ?? c.bot}</Badge>
+                </p>
                 <p className="text-xs text-muted-foreground">{c.description}</p>
               </div>
               <div className="min-w-0 flex-1 space-y-2">
@@ -628,9 +961,10 @@ function PanelEditor({ panel, onDone }: { panel: RolePanel | null; onDone: () =>
   const meta = useMeta();
   const botQ = useQuery({
     queryKey: ["panel", "bot"],
-    queryFn: () => api<{ user: { name: string; avatar: string } }>("GET", "/bot"),
+    queryFn: () => api<BotInfo>("GET", "/bot"),
   });
-  const bot = { name: botQ.data?.user.name ?? "bot", avatar: botQ.data?.user.avatar ?? null };
+  const userBot = botQ.data?.bots.find((b) => b.bot === "user");
+  const bot = { name: userBot?.name || "667 User", avatar: userBot?.avatar || null };
   const channels = (meta.data?.channels ?? []).filter((c) => MESSAGE_KINDS.includes(c.kind));
   const allRoles = meta.data?.roles ?? [];
   const roles = assignable(allRoles);
@@ -980,7 +1314,17 @@ function runLabel(r: LogRun): string {
   return `${runFmt.format(r.started_at)} → ${runFmt.format(r.last_at)} · ${r.lines} satır · ${end}`;
 }
 
-function Terminal() {
+function TerminalTab() {
+  const [bot, setBot] = useState<BotKey>("panel");
+  return (
+    <div className="space-y-3">
+      <Segmented value={bot} options={BOTS} onChange={setBot} label="Hangi botun logu" />
+      <Terminal key={bot} bot={bot} />
+    </div>
+  );
+}
+
+function Terminal({ bot }: { bot: BotKey }) {
   const [runs, setRuns] = useState<LogRun[]>([]);
   /** null: şu anki çalışma (canlı) */
   const [selected, setSelected] = useState<number | null>(null);
@@ -996,10 +1340,10 @@ function Terminal() {
   const firstRun = useRef<number | null>(null);
 
   const loadRuns = useCallback(() => {
-    api<{ runs: LogRun[] }>("GET", "/bot/logs/runs", undefined, { background: true })
+    api<{ runs: LogRun[] }>("GET", `/bot/logs/runs?bot=${bot}`, undefined, { background: true })
       .then((r) => setRuns(r.runs))
       .catch(() => {});
-  }, []);
+  }, [bot]);
 
   const merge = useCallback((run: number, incoming: LogLine[]) => {
     if (incoming.length === 0) return;
@@ -1020,7 +1364,9 @@ function Terminal() {
     setMoreBefore(false);
     setLink("archive");
     firstRun.current = selected;
-    api<LogPage>("GET", `/bot/logs?run=${selected}&limit=${PAGE}`, undefined, { background: true })
+    api<LogPage>("GET", `/bot/logs?bot=${bot}&run=${selected}&limit=${PAGE}`, undefined, {
+      background: true,
+    })
       .then((r) => {
         if (!alive) return;
         merge(selected, r.lines);
@@ -1030,7 +1376,7 @@ function Terminal() {
     return () => {
       alive = false;
     };
-  }, [selected, merge]);
+  }, [selected, merge, bot]);
 
   // Şu anki çalışma: canlı akış. Akış açılamazsa (aradaki bir vekil tamponluyorsa) 2,5 sn'de bir
   // yeni satırlar sorgulanır. Bot yeniden başlarsa eski çalışmanın son satırları tamamlanır, ekran
@@ -1055,7 +1401,7 @@ function Terminal() {
     };
 
     const get = (query: string) =>
-      api<LogPage>("GET", `/bot/logs?${query}`, undefined, { background: true });
+      api<LogPage>("GET", `/bot/logs?bot=${bot}&${query}`, undefined, { background: true });
 
     /** Yeni çalışmaya geç: öncekinin kalan satırlarını al, yenisinin son satırlarını yükle. */
     const switchTo = async (next: number) => {
@@ -1115,7 +1461,7 @@ function Terminal() {
       while (alive) {
         try {
           await streamSse<LogLine | { type: "hello"; run: number; seq: number }>(
-            "/bot/logs/stream",
+            `/bot/logs/stream?bot=${bot}`,
             (ev) => {
               if (!ev || typeof ev !== "object") return;
               if ("type" in ev) {
@@ -1144,7 +1490,7 @@ function Terminal() {
       clearInterval(poller);
       ctrl.abort();
     };
-  }, [selected, merge, loadRuns]);
+  }, [selected, merge, loadRuns, bot]);
 
   const loadOlder = async () => {
     const run = firstRun.current;
@@ -1155,7 +1501,7 @@ function Terminal() {
     try {
       const r = await api<LogPage>(
         "GET",
-        `/bot/logs?run=${run}&before=${oldest.seq}&limit=${PAGE}`,
+        `/bot/logs?bot=${bot}&run=${run}&before=${oldest.seq}&limit=${PAGE}`,
       );
       merge(run, r.lines);
       setMoreBefore(r.more_before);
@@ -1192,7 +1538,7 @@ function Terminal() {
     const url = URL.createObjectURL(new Blob([text], { type: "text/plain;charset=utf-8" }));
     const a = document.createElement("a");
     a.href = url;
-    a.download = `667-bot-log-${firstRun.current ?? "canli"}.txt`;
+    a.download = `667-${bot}-log-${firstRun.current ?? "canli"}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };

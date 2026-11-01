@@ -9,6 +9,7 @@ import {
   primaryButtonClass,
   usePanelAction,
 } from "./actions";
+import { BOTS, type BotKey } from "./bots";
 import { checkFile, fileToDataUri } from "./files";
 import { Card, Notice, Segmented, selectClass } from "./ui";
 
@@ -57,13 +58,23 @@ const DEFAULT_AVATAR = "https://cdn.discordapp.com/embed/avatars/0.png";
 
 /** Bot sayfası › Durum ve profil. */
 export function BotProfile({ isOwner }: { isOwner: boolean }) {
+  const [bot, setBot] = useState<BotKey>("panel");
+  return (
+    <div className="space-y-4">
+      <Segmented value={bot} options={BOTS} onChange={setBot} label="Hangi botun profili" />
+      <BotProfileOf key={bot} bot={bot} isOwner={isOwner} />
+    </div>
+  );
+}
+
+function BotProfileOf({ bot, isOwner }: { bot: BotKey; isOwner: boolean }) {
   const q = useQuery({
-    queryKey: ["panel", "bot-profile"],
-    queryFn: () => api<ProfileInfo>("GET", "/bot/profile"),
+    queryKey: ["panel", "bot-profile", bot],
+    queryFn: () => api<ProfileInfo>("GET", `/bot/profile?bot=${bot}`),
   });
   if (q.error) return <Notice error={q.error} />;
   if (!q.data) return <p className="py-8 text-center text-sm text-muted-foreground">Yükleniyor…</p>;
-  return <ProfileForms info={q.data} isOwner={isOwner} />;
+  return <ProfileForms info={q.data} isOwner={isOwner} bot={bot} />;
 }
 
 /**
@@ -142,7 +153,15 @@ function ImagePick({
   );
 }
 
-function ProfileForms({ info, isOwner }: { info: ProfileInfo; isOwner: boolean }) {
+function ProfileForms({
+  info,
+  isOwner,
+  bot,
+}: {
+  info: ProfileInfo;
+  isOwner: boolean;
+  bot: BotKey;
+}) {
   const [presence, setPresence] = useState<Presence>(info.presence);
   const [nick, setNick] = useState(info.server.nick ?? "");
   const [bio, setBio] = useState(info.server.bio);
@@ -155,7 +174,7 @@ function ProfileForms({ info, isOwner }: { info: ProfileInfo; isOwner: boolean }
 
   const setP = (patch: Partial<Presence>) => setPresence((p) => ({ ...p, ...patch }));
   const presenceDirty = JSON.stringify(presence) !== JSON.stringify(info.presence);
-  const savePresence = usePanelAction(() => api("PUT", "/bot/presence", presence), {
+  const savePresence = usePanelAction(() => api("PUT", `/bot/presence?bot=${bot}`, presence), {
     success: "Durum güncellendi",
   });
 
@@ -167,13 +186,16 @@ function ProfileForms({ info, isOwner }: { info: ProfileInfo; isOwner: boolean }
     if (sBanner !== null) body["banner"] = sBanner;
     return body;
   };
-  const saveServer = usePanelAction(() => api("PATCH", "/bot/profile/server", serverBody()), {
-    success: "Sunucu profili güncellendi",
-    onDone: () => {
-      setSAvatar(null);
-      setSBanner(null);
+  const saveServer = usePanelAction(
+    () => api("PATCH", `/bot/profile/server?bot=${bot}`, serverBody()),
+    {
+      success: "Sunucu profili güncellendi",
+      onDone: () => {
+        setSAvatar(null);
+        setSBanner(null);
+      },
     },
-  });
+  );
 
   const globalBody = () => {
     const body: Record<string, string> = {};
@@ -182,13 +204,16 @@ function ProfileForms({ info, isOwner }: { info: ProfileInfo; isOwner: boolean }
     if (gBanner !== null) body["banner"] = gBanner;
     return body;
   };
-  const saveGlobal = usePanelAction(() => api("PATCH", "/bot/profile/global", globalBody()), {
-    success: "Genel profil güncellendi",
-    onDone: () => {
-      setGAvatar(null);
-      setGBanner(null);
+  const saveGlobal = usePanelAction(
+    () => api("PATCH", `/bot/profile/global?bot=${bot}`, globalBody()),
+    {
+      success: "Genel profil güncellendi",
+      onDone: () => {
+        setGAvatar(null);
+        setGBanner(null);
+      },
     },
-  });
+  );
 
   // Önizleme: sunucu profili boş olan her şeyde genel profile düşer.
   const globalAvatar =
