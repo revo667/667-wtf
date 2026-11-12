@@ -28,18 +28,4 @@ export const MEMBERS: Member[] = [
     tags: ["#667"],
     banner: { image: "/logo-667.png", label: "667.wtf", href: "https://667.wtf" },
   },
-  {
-    discordId: "292009962778132491",
-    name: "esah667",
-    handle: "esah667",
-    avatar: "/members/esah.png",
-    badges: [],
-    discordBadges: [
-      "nitro_bronze",
-      "early_supporter",
-    ],
-    bio: "emek hırsızı,\nmy mercy prevails over my wrath",
-    tags: ["#667"],
-    banner: { image: "/logo-667.png", label: "discord.gg/667", href: "https://discord.gg/667" },
-  },
 ];

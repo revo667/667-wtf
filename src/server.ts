@@ -6,6 +6,7 @@ import { isPanelHost, PANEL_PREFIX, siteRedirect } from "./lib/hosts";
 import { ensureEnv } from "./lib/universe/env";
 import { handleUniverseApi } from "./lib/universe/api";
 import { renderDiscordCard } from "./lib/discord-card";
+import { fetchPresence } from "./lib/lanyard";
 
 type ServerEntry = {
   fetch: (request: Request, env: unknown, ctx: unknown) => Promise<Response> | Response;
@@ -193,7 +194,7 @@ const SITE_API_ROUTES = new Set([
 ]);
 
 const PRESENCE_TTL_MS = 15_000;
-const DEV_PRESENCE_URL = "https://panel.667.wtf/api/public/presence";
+const PRESENCE_STALE_MS = 120_000;
 let presenceCache: { at: number; body: string } | null = null;
 
 async function presenceApi(): Promise<Response> {
@@ -204,25 +205,15 @@ async function presenceApi(): Promise<Response> {
   if (presenceCache && Date.now() - presenceCache.at < PRESENCE_TTL_MS) {
     return new Response(presenceCache.body, { headers });
   }
-  const apiOrigin = readEnv("HEROKU_API_ORIGIN");
-  const secret = readEnv("ORIGIN_SECRET");
-  const devFallback = import.meta.env.DEV && (!apiOrigin || !secret);
-  if (!devFallback && (!apiOrigin || !secret)) {
-    return jsonError(503, "Durum servisi yapılandırılmamış");
-  }
   try {
-    const upstream = devFallback
-      ? await fetch(DEV_PRESENCE_URL, { headers: { accept: "application/json" } })
-      : await fetch(new URL("/api/public/presence", apiOrigin), {
-          headers: { accept: "application/json", "x-origin-auth": secret ?? "" },
-        });
-    if (!upstream.ok) throw new Error(`presence ${upstream.status}`);
-    const body = await upstream.text();
+    const body = JSON.stringify({ users: await fetchPresence(), at: Date.now() });
     presenceCache = { at: Date.now(), body };
     return new Response(body, { headers });
   } catch (error) {
     console.error(error);
-    if (presenceCache) return new Response(presenceCache.body, { headers });
+    if (presenceCache && Date.now() - presenceCache.at < PRESENCE_STALE_MS) {
+      return new Response(presenceCache.body, { headers });
+    }
     return jsonError(502, "Durum servisine ulaşılamadı");
   }
 }
