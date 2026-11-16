@@ -95,6 +95,8 @@ interface BotInfo {
   guild_tag: GuildTag;
   temp_voice: TempVoice;
   verify: Verify;
+  /** /sesolustur'un kalıcı ses kanalı açtığı kategori (null: seçilmemiş) */
+  voice_category: string | null;
   /** Bu rollerdekiler /ban ile banlanamaz; sadece panelden admin/owner. */
   ban_protected_roles: string[];
   locked: { id: string; name: string; reason: string; at: number }[];
@@ -308,6 +310,7 @@ function General({ info, isOwner }: { info: BotInfo; isOwner: boolean }) {
       <BotsCard bots={info.bots} />
       <VoiceCard voices={info.voices} />
       <TempVoiceCard key={`tv${JSON.stringify(info.temp_voice)}`} value={info.temp_voice} />
+      <VoiceCategoryCard key={`vc${info.voice_category}`} value={info.voice_category} />
       <VerifyCard key={`v${JSON.stringify(info.verify)}`} value={info.verify} />
       <GuildTagCard key={JSON.stringify(info.guild_tag)} tag={info.guild_tag} />
       {info.locked.length > 0 && (
@@ -406,6 +409,52 @@ function GuildTagCard({ tag }: { tag: GuildTag }) {
           </p>
         )}
       </div>
+    </Card>
+  );
+}
+
+function VoiceCategoryCard({ value }: { value: string | null }) {
+  const meta = useMeta();
+  const categories = (meta.data?.channels ?? []).filter((c) => c.kind === "category");
+  const [category, setCategory] = useState(value ?? "");
+  const save = usePanelAction(
+    () => api("PUT", "/bot/voice-category", { category_id: category || null }),
+    { success: "Kaydedildi" },
+  );
+  const missing = value !== null && meta.data && !categories.some((c) => c.id === value);
+  return (
+    <Card title="Ses kanalı oluşturma · 667 Voice">
+      <p className="mb-3 text-xs text-muted-foreground">
+        Discord'da /sesolustur kalıcı ses kanalını bu kategoride, kategorinin izinleriyle (senkron)
+        açar; erişim rolü seçilirse o role de açılır. Kanal boşalınca silinmez. Komutu sadece owner
+        ve admin kullanabilir.
+      </p>
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          className={`${selectClass} min-w-0 flex-1`}
+        >
+          <option value="">Seçilmedi: komut kanal açmaz</option>
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+        <button
+          type="button"
+          disabled={save.busy || category === (value ?? "")}
+          onClick={() => save.run(undefined)}
+          className={primaryButtonClass}
+        >
+          Kaydet
+        </button>
+      </div>
+      {missing && (
+        <p className="mt-2 text-xs text-destructive">Seçili kategori sunucuda bulunamadı.</p>
+      )}
+      <ActionResult msg={save.msg} />
     </Card>
   );
 }
