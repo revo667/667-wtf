@@ -44,6 +44,16 @@ interface Protection {
   exempt: { roles: string[]; channels: string[] };
   backups: { enabled: boolean; keep: number };
   boosts: { enabled: boolean; threshold: number; interval_hours: number };
+  alts: {
+    enabled: boolean;
+    threshold: number;
+    keywords: string[];
+    lures: string[];
+    games: string[];
+    ban_evasion: boolean;
+  };
+  // Web rolünü sadece bot oluşturur; formdan değiştirilmez.
+  web: { enabled: boolean; role_id: string | null; join_days: number };
 }
 
 interface BotRow {
@@ -65,6 +75,7 @@ interface Status {
   // Yetki korumasında seçilebilen ve her zaman yasaklı yetkiler (bit maskesi).
   guard_candidates: string;
   guard_always: string;
+  web: { role_id: string | null; role_name: string | null; covered: number; total: number };
 }
 
 interface ProtectionOut {
@@ -94,6 +105,8 @@ const MODULES: Record<string, string> = {
   quarantine: "Karantina",
   backup: "Yedek",
   boost: "Takviye",
+  alts: "Yan hesap",
+  web: "Web koruması",
 };
 
 const SEVERITY: Record<string, { label: string; tone: "muted" | "accent" | "danger" }> = {
@@ -117,7 +130,55 @@ function normalize(p: Protection): Protection {
     exempt: { roles: ids(p.exempt.roles), channels: ids(p.exempt.channels) },
     backups: { ...p.backups },
     boosts: { ...p.boosts },
+    alts: {
+      ...p.alts,
+      keywords: [...p.alts.keywords],
+      lures: [...p.alts.lures],
+      games: [...p.alts.games],
+    },
+    web: { ...p.web, role_id: p.web.role_id || null },
   };
+}
+
+const parseList = (text: string) =>
+  text
+    .split("\n")
+    .map((s) => s.trim())
+    .filter(Boolean);
+
+/** Satır başına bir öğe. Yazarken boş satır kaybolmasın diye metin yerelde tutulur. */
+function ListField({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string;
+  value: string[];
+  disabled: boolean;
+  onChange: (v: string[]) => void;
+}) {
+  const joined = value.join("\n");
+  const [text, setText] = useState(joined);
+  useEffect(() => {
+    // Dışarıdan değişince (geri al, kaydet sonrası) metni eşitle.
+    setText((t) => (parseList(t).join("\n") === joined ? t : joined));
+  }, [joined]);
+  return (
+    <label className="block space-y-1.5 text-sm">
+      <span className="block text-muted-foreground">{label}</span>
+      <textarea
+        rows={4}
+        value={text}
+        disabled={disabled}
+        onChange={(e) => {
+          setText(e.target.value);
+          onChange(parseList(e.target.value));
+        }}
+        className={`${inputClass} w-full font-mono text-xs`}
+      />
+    </label>
+  );
 }
 
 function ProtectionPage() {
@@ -147,6 +208,7 @@ function ProtectionAdmin({ owner }: { owner: boolean }) {
         </p>
       )}
       <ProtectionForm data={q.data} owner={owner} />
+      <Suspects />
       <Quarantine />
       <p className="text-xs text-muted-foreground">
         Panel hesaplarının dondurulması ve açılması Panel sayfasına taşındı.
@@ -215,6 +277,17 @@ function ProtectionForm({ data, owner }: { data: ProtectionOut; owner: boolean }
   const raidUnlock = usePanelAction(() => api("POST", "/protection/raid/unlock"), {
     success: "Kilit kaldırıldı",
   });
+  const webApply = usePanelAction(
+    () => api<{ written: number; total: number }>("POST", "/protection/web/apply"),
+    { success: "Web koruması izinleri yazıldı" },
+  );
+  const altScan = usePanelAction(() => api("POST", "/alts/scan"), {
+    success: "Tarama bitti; liste aşağıda",
+  });
+  const setAlts = (patch: Partial<Protection["alts"]>) =>
+    setForm({ ...form, alts: { ...form.alts, ...patch } });
+  const setWeb = (patch: Partial<Protection["web"]>) =>
+    setForm({ ...form, web: { ...form.web, ...patch } });
 
   const allow = (id: string) =>
     setForm({ ...form, bots: { ...form.bots, allowed: [...form.bots.allowed, id] } });
@@ -769,6 +842,116 @@ function ProtectionForm({ data, owner }: { data: ProtectionOut; owner: boolean }
           </div>
         </Card>
 
+        <Card title="Web koruması">
+          <div className="space-y-3">
+            <Toggle
+              checked={form.web.enabled}
+              disabled={locked}
+              onChange={(enabled) => setWeb({ enabled })}
+              label="Açık"
+            />
+            <NumberField
+              label="Son kaç günde katılanlara (gün)"
+              value={form.web.join_days}
+              min={1}
+              max={90}
+              disabled={locked}
+              onChange={(join_days) => setWeb({ join_days })}
+            />
+            <p className="text-sm">
+              <span className="text-muted-foreground">Rol: </span>
+              {status.web.role_name ? `@${status.web.role_name}` : "açılınca bot oluşturur"}
+              {status.web.role_id && (
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {status.web.covered}/{status.web.total} kanalda gizli
+                </span>
+              )}
+            </p>
+            {owner && saved.web.enabled && (
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  disabled={webApply.busy}
+                  onClick={() => webApply.run(undefined)}
+                  className={buttonClass}
+                >
+                  İzinleri yeniden uygula
+                </button>
+                <ActionResult msg={webApply.msg} />
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Sunucuya yakın zamanda katılıp sadece tarayıcıdan (web) bağlanan üyenin rolleri
+              alınır, yalnızca web rolü verilir; bu rol hiçbir kanalı göremez (her kanala yasak
+              yazılır, yeni kanallara da). Aynı kişi masaüstü ya da mobil uygulamadan bağlanınca
+              rolleri kendiliğinden geri verilir. Yetkililer ve muaf roller etkilenmez.
+              Çevrimdışı/görünmez olanın platformu bilinmez. Kısıtlananlar aşağıdaki Karantina
+              listesinde görünür.
+            </p>
+          </div>
+        </Card>
+        <Card title="Yan hesap dedektörü">
+          <div className="space-y-3">
+            <Toggle
+              checked={form.alts.enabled}
+              disabled={locked}
+              onChange={(enabled) => setAlts({ enabled })}
+              label="Açık"
+            />
+            <NumberField
+              label="Şüpheli eşiği (puan)"
+              value={form.alts.threshold}
+              min={2}
+              max={30}
+              disabled={locked}
+              onChange={(threshold) => setAlts({ threshold })}
+            />
+            <Toggle
+              checked={form.alts.ban_evasion}
+              disabled={locked}
+              onChange={(ban_evasion) => setAlts({ ban_evasion })}
+              label="Ban kaçağı (banlıyla aynı avatar / çok benzer ad)"
+            />
+            <ListField
+              label="Şüpheli kelimeler (ad, etiket, özel durum)"
+              value={form.alts.keywords}
+              disabled={locked}
+              onChange={(keywords) => setAlts({ keywords })}
+            />
+            <ListField
+              label="Yem kalıpları (ilk 7 günün mesajları)"
+              value={form.alts.lures}
+              disabled={locked}
+              onChange={(lures) => setAlts({ lures })}
+            />
+            <ListField
+              label="Oyunlar (o an oynuyorsa)"
+              value={form.alts.games}
+              disabled={locked}
+              onChange={(games) => setAlts({ games })}
+            />
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                disabled={altScan.busy || !saved.alts.enabled}
+                onClick={() => altScan.run(undefined)}
+                className={buttonClass}
+              >
+                {altScan.busy ? "Taranıyor…" : "Şimdi tara"}
+              </button>
+              <ActionResult msg={altScan.msg} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Puanlar: banlıyla aynı avatar +6, Discord spam işareti +5, banlıya çok benzer ad +3,
+              AutoMod karantinası +3, ilk mesajlarda yem +3, hesap yaşı (7/30/365 gün altı)
+              +3/+2/+1, sadece web +2, şüpheli kelime +2 (rakamla gizlenmişse +1), durumda
+              bağlantı/DM +2, listedeki oyun +1, avatar yok +1. Sadece işaretler ve Yan hesap loguna
+              yazar; işlemi sen seçersin. Discord biyografi, zamir ve profil panosunu botlara
+              vermez; zamirler ancak ad ya da durumda yazılıysa yakalanır. Satır başına bir öğe.
+            </p>
+          </div>
+        </Card>
         <Card title="Yedekleme">
           <div className="space-y-3">
             <Toggle
@@ -891,7 +1074,11 @@ function Quarantine() {
             <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
               <Avatar src={r.avatar} size={24} />
               <span className="font-medium">{r.name}</span>
-              <Badge>{r.mode === "role" ? "rol" : "susturma"}</Badge>
+              {r.reason.startsWith("web istemcisi") ? (
+                <Badge tone="accent">web</Badge>
+              ) : (
+                <Badge>{r.mode === "role" ? "rol" : "susturma"}</Badge>
+              )}
               {!r.present && <Badge>sunucuda değil</Badge>}
               <span className="ml-auto">
                 <ConfirmButton
@@ -911,6 +1098,112 @@ function Quarantine() {
         </ul>
       )}
       <ActionResult msg={release.msg} />
+    </Card>
+  );
+}
+
+interface SuspectRow {
+  id: string;
+  name: string;
+  avatar: string | null;
+  score: number;
+  reasons: { key: string; points: number; text: string }[];
+  banned: { id: string; name: string | null } | null;
+  first_at: number;
+  last_at: number;
+  account_created: number;
+  joined_at: number | null;
+  present: boolean;
+  platform: string | null;
+  quarantined: boolean;
+}
+
+function Suspects() {
+  const q = useQuery({
+    queryKey: ["panel", "protection", "alts"],
+    queryFn: () => api<{ items: SuspectRow[] }>("GET", "/alts"),
+  });
+  const reason = "Şüpheli hesap (yan hesap dedektörü)";
+  const quarantine = usePanelAction((id: string) => api("POST", `/quarantine/${id}`, { reason }), {
+    success: "Karantinaya alındı",
+  });
+  const kick = usePanelAction((id: string) => api("POST", `/members/${id}/kick`, { reason }), {
+    success: "Atıldı",
+  });
+  const ban = usePanelAction(
+    (id: string) => api("POST", `/members/${id}/ban`, { reason, delete_days: 0 }),
+    { success: "Banlandı" },
+  );
+  const dismiss = usePanelAction((id: string) => api("POST", `/alts/${id}/dismiss`), {
+    success: "Temiz sayıldı",
+  });
+  const busy = quarantine.busy || kick.busy || ban.busy || dismiss.busy;
+  return (
+    <Card title="Şüpheli hesaplar">
+      {q.error ? (
+        <Notice error={q.error} />
+      ) : !q.data ? null : q.data.items.length === 0 ? (
+        <Notice empty="Şüpheli hesap yok" />
+      ) : (
+        <ul className="divide-y divide-border/50">
+          {q.data.items.map((r) => (
+            <li key={r.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2.5 text-sm">
+              <Avatar src={r.avatar} size={24} />
+              <span className="font-medium">{r.name}</span>
+              <span className="text-xs text-muted-foreground">{r.id}</span>
+              <Badge tone={r.score >= 8 || r.banned ? "danger" : "accent"}>{r.score} puan</Badge>
+              {r.quarantined && <Badge>karantinada</Badge>}
+              {!r.present && <Badge>sunucuda değil</Badge>}
+              <span className="ml-auto flex flex-wrap gap-2">
+                {r.present && !r.quarantined && (
+                  <ConfirmButton
+                    label="Karantina"
+                    confirmText="Karantinaya alınsın mı?"
+                    danger={false}
+                    busy={busy}
+                    onConfirm={() => quarantine.run(r.id)}
+                  />
+                )}
+                {r.present && (
+                  <ConfirmButton
+                    label="At"
+                    confirmText="Sunucudan atılsın mı?"
+                    busy={busy}
+                    onConfirm={() => kick.run(r.id)}
+                  />
+                )}
+                <ConfirmButton
+                  label="Banla"
+                  confirmText="Banlansın mı?"
+                  busy={busy}
+                  onConfirm={() => ban.run(r.id)}
+                />
+                <ConfirmButton
+                  label="Temiz"
+                  confirmText="Temiz sayılsın mı? Bir daha işaretlenmez."
+                  danger={false}
+                  busy={busy}
+                  onConfirm={() => dismiss.run(r.id)}
+                />
+              </span>
+              <ul className="w-full space-y-0.5 text-xs text-muted-foreground">
+                {r.reasons.map((s) => (
+                  <li key={s.key}>
+                    <span className="tabular-nums">+{s.points}</span> {s.text}
+                  </li>
+                ))}
+              </ul>
+              <p className="w-full text-xs text-muted-foreground">
+                Hesap {dateTime(r.account_created)}
+                {r.joined_at ? ` · katıldı ${dateTime(r.joined_at)}` : ""}
+                {r.platform ? ` · ${r.platform}` : ""} · işaretlendi {ago(r.first_at)}
+                {r.banned ? ` · benzediği banlı: ${r.banned.name ?? r.banned.id}` : ""}
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+      <ActionResult msg={quarantine.msg ?? kick.msg ?? ban.msg ?? dismiss.msg} />
     </Card>
   );
 }

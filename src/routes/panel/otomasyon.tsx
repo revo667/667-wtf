@@ -34,6 +34,7 @@ interface Logs {
   moderation: string | null;
   voice: string | null;
   protection: string | null;
+  alts: string | null;
 }
 
 interface Automation {
@@ -51,6 +52,7 @@ const LOGS: { key: keyof Logs; label: string; hint: string }[] = [
   { key: "moderation", label: "Moderasyon logu", hint: "panelden verilen cezalar" },
   { key: "voice", label: "Ses logu", hint: "sese giriş, çıkış, kanal değişimi" },
   { key: "protection", label: "Koruma logu", hint: "koruma modüllerinin müdahaleleri" },
+  { key: "alts", label: "Yan hesap logu", hint: "yan hesap dedektörünün şüpheli hesap kartları" },
 ];
 
 /**
@@ -69,6 +71,7 @@ function clean(a: Automation): Automation {
       moderation: ch(a.logs.moderation),
       voice: ch(a.logs.voice),
       protection: ch(a.logs.protection),
+      alts: ch(a.logs.alts),
     },
   };
 }
